@@ -20,10 +20,8 @@
       progress = status.progress
     })
 
-    window.api.onOllamaReady((ready) => {
-      if (ready) {
-        ollamaReady = true
-      }
+    window.api.onOllamaReady(() => {
+      ollamaReady = true
     })
   })
 
@@ -38,7 +36,7 @@
   <span class="svelte">{ollamaProgressMsg}</span>
 </div>
 <div>
-  <progress max="100">value={progress*100}</progress>
+  <progress max="1" value={progress}></progress>
 </div>
 <p class="tip">Please try pressing <code>F12</code> to open the devTool</p>
 <div class="actions">
@@ -54,7 +52,7 @@
 
 <style>
   progress {
-    width: 300px;
+    width: 450px;
     height: 20px;
   }
 </style>

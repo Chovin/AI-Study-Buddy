@@ -8,6 +8,7 @@ import models from './models'
 export default async function setupOllama(mainWindow, modelName) {
   const eo = new ElectronOllama({
     basePath: app.getPath('userData'),
+    modelsPath: path.join(app.getPath('userData'), 'models')
   })
 
   // download/start Ollama server
@@ -48,44 +49,43 @@ export default async function setupOllama(mainWindow, modelName) {
 
   console.log('model path: ', modelPath)
 
-  const pollInterval = 500
-  let lastProgress = -1
-  const progressInterval = setInterval(() => {
-    let size = 0
-    if (fs.existsSync(modelPath)) {
-      size = fs.readdirSync(modelPath).reduce((acc, file) => {
-        const filePath = path.join(modelPath, file)
-        return acc + fs.statSync(filePath).size
-      }, 0)
-    }
-    const progress = Math.min(size / modelSize, 1)
-    if (progress !== lastProgress) {
-      console.log(`Model download progress: ${(progress * 100).toFixed(2)}%`)
-      mainWindow.webContents.send('ollama-status', {state: 'starting', message: 'Downloading model...', progress})
-      lastProgress = progress
-    }
-
-    if (progress >= 1) {
-      clearInterval(progressInterval)
-      mainWindow.webContents.send('ollama-status', {state: 'ready', message: 'Ollama server is running.', progress: 1})
-      mainWindow.webContents.send('ollama-ready')
-    }
-  }, pollInterval)
-
-
-  // get client and do a test query
-  // test query is necessary to trigger the model download, which is required before the server is considered "ready"
+  // get client
   const ollama = new Ollama({baseURL: 'http://localhost:11434'})
-  let result
+
+  // check if model is installed
+  let installedModels
   try {
-    result = await ollama.pull({model})
+    installedModels = await ollama.list()
   } catch (error) {
-    clearInterval(progressInterval)
-    console.error('Failed to pull model:', error)
-    mainWindow.webContents.send('ollama-status', {state: 'error', message: 'Failed to download model.', progress: 0})
-    return null
+    console.error('Failed to list models:', error)
+    mainWindow.webContents.send('ollama-status', {state: 'error', message: 'Failed to communicate with Ollama server.', progress: 0})
   }
-  console.log('Ollama pull result:', result)
+
+  const modelInstalled = installedModels.models.some(m => m.name === model)
+
+  if (!modelInstalled) {
+    // start downloading model
+    mainWindow.webContents.send('ollama-status', {state: 'starting', message: `Downloading model...`, progress: 0})
+
+    let pulled = false
+    while (!pulled) {
+      try {
+        for await (const event of await ollama.pull({model, stream: true})) {
+          if (event.total && event.completed) {
+            const progress = event.completed / event.total
+            mainWindow.webContents.send('ollama-status', {state: 'starting', message: `Downloading model...`, progress})  
+          }
+        }
+        pulled = true
+      } catch (error) {
+        console.warn('Failed to pull model, retrying in 5 seconds...', error)
+        await new Promise(resolve => setTimeout(resolve, 5000))
+      }
+    }
+  }
+
+  mainWindow.webContents.send('ollama-status', {state: 'ready', message: 'Model is ready!', progress: 1})
+  mainWindow.webContents.send('ollama-ready')
   
   return ollama
 }
