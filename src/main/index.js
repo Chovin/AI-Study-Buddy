@@ -2,6 +2,12 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import setupOllama from './ollama'
+import models from './models'
+
+const MODEL_NAME = Object.keys(models)[1] // switch to 1 for smaller model during development
+
+let ollamaInstance = null
 
 function createWindow() {
   // Create the browser window.
@@ -19,6 +25,11 @@ function createWindow() {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+    if (!ollamaInstance) {
+      setupOllama(mainWindow, MODEL_NAME).then(instance => {
+        ollamaInstance = instance
+      })
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -47,6 +58,12 @@ app.whenReady().then(() => {
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
+  })
+
+  app.on('will-quit', () => {
+    if (ollamaInstance) {
+      ollamaInstance.stop()
+    }
   })
 
   // IPC test

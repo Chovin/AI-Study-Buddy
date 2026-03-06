@@ -1,6 +1,31 @@
 <script>
   import Versions from './components/Versions.svelte'
   import electronLogo from './assets/electron.svg'
+  import {onMount} from 'svelte'
+
+  let progress = $state(0)
+  let ollamaState = $state('starting')
+  let ollamaMsg = $state('Initializing...')
+  let ollamaProgressMsg = $derived(
+    ollamaState == 'error' ? ollamaMsg :
+    (ollamaMsg + ` ${parseInt(progress*100)}%`)
+  )
+
+  let ollamaReady = $state(false);
+
+  onMount(() => {
+    window.api.onOllamaStatus((status) => {
+      ollamaState = status.state
+      ollamaMsg = status.message
+      progress = status.progress
+    })
+
+    window.api.onOllamaReady((ready) => {
+      if (ready) {
+        ollamaReady = true
+      }
+    })
+  })
 
   const ipcHandle = () => window.electron.ipcRenderer.send('ping')
 </script>
@@ -8,8 +33,12 @@
 <img alt="logo" class="logo" src={electronLogo} />
 <div class="creator">Powered by electron-vite</div>
 <div class="text">
-  Build an Electron app with
-  <span class="svelte">Svelte</span>
+  Setting up Deepseek. 
+  <span class="svelte">{ollamaReady}</span>
+  <span class="svelte">{ollamaProgressMsg}</span>
+</div>
+<div>
+  <progress max="100">value={progress*100}</progress>
 </div>
 <p class="tip">Please try pressing <code>F12</code> to open the devTool</p>
 <div class="actions">
@@ -22,3 +51,10 @@
   </div>
 </div>
 <Versions />
+
+<style>
+  progress {
+    width: 300px;
+    height: 20px;
+  }
+</style>

@@ -19,7 +19,9 @@
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
-    "@electron-toolkit/utils": "^4.0.0"
+    "@electron-toolkit/utils": "^4.0.0",
+    "electron-ollama": "^0.1.25",
+    "ollama": "^0.6.3"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config": "^2.1.0",
