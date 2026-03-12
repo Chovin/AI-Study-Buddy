@@ -29,6 +29,7 @@
     "@electron-toolkit/eslint-config": "^2.1.0",
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
     "@smui/button": "^8.0.3",
+    "@smui/linear-progress": "^8.0.3",
     "@smui/list": "^8.0.3",
     "@smui/textfield": "^8.0.3",
     "@sveltejs/vite-plugin-svelte": "^6.2.0",

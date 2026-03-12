@@ -1,6 +1,7 @@
 <script>
   import Versions from './components/Versions.svelte'
   import TopicManager from './components/TopicManager.svelte';
+  import LinearProgress from '@smui/linear-progress';
   import {onMount} from 'svelte'
   import 'svelte-material-ui/themes/svelte.css'
 
@@ -35,8 +36,8 @@
   <span class="svelte">{ollamaReady}</span>
   <span class="svelte">{ollamaProgressMsg}</span>
 </div>
-<div>
-  <progress max="1" value={progress}></progress>
+<div class="progress">
+  <LinearProgress {progress} closed={ollamaReady} />
 </div>
 <p class="tip">Please try pressing <code>F12</code> to open the devTool</p>
 <div class="actions">
@@ -52,8 +53,7 @@
 <Versions />
 
 <style>
-  progress {
+  .progress {
     width: 450px;
-    height: 20px;
   }
 </style>
