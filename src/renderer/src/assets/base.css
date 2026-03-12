@@ -30,7 +30,7 @@
 
   --color-text: var(--ev-c-text-1);
 }
-
+/* 
 *,
 *::before,
 *::after {
@@ -64,4 +64,4 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
+} */

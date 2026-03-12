@@ -22,7 +22,8 @@
     "@electron-toolkit/utils": "^4.0.0",
     "electron-ollama": "^0.1.25",
     "ollama": "^0.6.3",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "svelte-material-ui": "^8.0.3"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config": "^2.1.0",
