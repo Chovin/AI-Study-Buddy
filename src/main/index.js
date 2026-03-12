@@ -1,13 +1,19 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
+import { fileURLToPath } from 'url'
+import { join, dirname } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import setupOllama from './ollama'
 import models from './models'
+import fs from 'fs'
+import path from 'path'
+import Database from './database'
 
 const MODEL_NAME = Object.keys(models)[1] // switch to 1 for smaller model during development
 
 let ollamaInstance = null
+let electronOllamaInstance = null
+let db;
 
 function createWindow() {
   // Create the browser window.
@@ -26,8 +32,9 @@ function createWindow() {
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
     if (!ollamaInstance) {
-      setupOllama(mainWindow, MODEL_NAME).then(instance => {
-        ollamaInstance = instance
+      setupOllama(mainWindow, MODEL_NAME).then(({ eo, ollama }) => {
+        ollamaInstance = ollama
+        electronOllamaInstance = eo
       })
     }
   })
@@ -53,6 +60,9 @@ app.whenReady().then(() => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
+  db = new Database();
+  app.db = db;
+
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
@@ -60,9 +70,9 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  app.on('will-quit', () => {
-    if (ollamaInstance) {
-      ollamaInstance.stop()
+  app.on('will-quit', async () => {
+    if (electronOllamaInstance) {
+      await electronOllamaInstance.getServer()?.stop()
     }
   })
 
@@ -89,3 +99,54 @@ app.on('window-all-closed', () => {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
+
+ipcMain.handle('create-topic', async (_, topicName) => {
+  try {
+    await db.createTopic(topicName);
+    return 'Topic created successfully';
+  } catch (err) {
+    throw new Error(err.message);
+  }
+});
+
+ipcMain.handle('upload-file', async (_, { topicId, filePath }) => {
+  const originalFileName = path.basename(filePath);
+  const userDataPath = app.getPath('userData'); // Get the user data directory
+  const topicDir = path.join(userDataPath, 'uploads', `topic_${topicId}`);
+
+  console.log('Uploading file:', { topicId, filePath, originalFileName, topicDir })
+  try {
+    const fileId = await db.addFile(topicId, originalFileName);
+
+    if (!fs.existsSync(topicDir)) {
+      fs.mkdirSync(topicDir, { recursive: true });
+    }
+
+    const destination = path.join(topicDir, `${fileId}`);
+    fs.copyFileSync(filePath, destination);
+
+    await db.updateFilePath(fileId, destination);
+    console.log('File upload complete: ', destination)
+    return 'File uploaded successfully';
+  } catch (err) {
+    throw new Error(err.message);
+  }
+});
+
+ipcMain.handle('get-topics', async () => {
+  try {
+    const topics = await db.getTopics();
+    return topics;
+  } catch (err) {
+    throw new Error(err.message);
+  }
+});
+
+ipcMain.handle('get-files', async (_, topicId) => {
+  try {
+    const files = await db.getFilesByTopic(topicId);
+    return files;
+  } catch (err) {
+    throw new Error(err.message);
+  }
+});

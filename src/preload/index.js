@@ -12,6 +12,18 @@ const api = {
     electronAPI.ipcRenderer.once('ollama-ready', () => {
       callback()
     })
+  },
+  getTopics: async () => {
+    return await electronAPI.ipcRenderer.invoke('get-topics')
+  },
+  getFiles: async (topicId) => {
+    return await electronAPI.ipcRenderer.invoke('get-files', topicId)
+  },
+  createTopic: async (name) => {
+    return await electronAPI.ipcRenderer.invoke('create-topic', name)
+  },
+  uploadFile: async (topicId, filePath) => {
+    return await electronAPI.ipcRenderer.invoke('upload-file', { topicId, filePath })
   }
 }
 

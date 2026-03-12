@@ -87,5 +87,5 @@ export default async function setupOllama(mainWindow, modelName) {
   mainWindow.webContents.send('ollama-status', {state: 'ready', message: 'Model is ready!', progress: 1})
   mainWindow.webContents.send('ollama-ready')
   
-  return ollama
+  return { eo, ollama }
 }

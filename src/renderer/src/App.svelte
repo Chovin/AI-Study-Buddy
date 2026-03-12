@@ -1,6 +1,7 @@
 <script>
   import Versions from './components/Versions.svelte'
   import electronLogo from './assets/electron.svg'
+  import TopicManager from './components/TopicManager.svelte';
   import {onMount} from 'svelte'
 
   let progress = $state(0)
@@ -48,6 +49,7 @@
     <a target="_blank" rel="noreferrer" on:click={ipcHandle}>Send IPC</a>
   </div>
 </div>
+<TopicManager />
 <Versions />
 
 <style>
