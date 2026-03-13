@@ -4,10 +4,15 @@
   import Button from '@smui/button';
   import List, { Item } from '@smui/list';
 
+
+  // this file is using svelte v4
+  // you can use v4 or v5, but the whole file needs 
+  // to be in either one or the other
+  // I like the simplicity of just making variables 
+  // and them being reactive
   let topics = [];
   let newTopic = '';
-  let selectedTopic = null;
-  let files = [];
+  export let selectedTopic = null;
 
   async function fetchTopics() {
     topics = await window.api.getTopics();
@@ -21,23 +26,6 @@
     }
   }
 
-  async function uploadFiles(event) {
-    const files = event.target.files;
-    if (files[0] && selectedTopic) {
-      for (let file of files) {
-        // technically we should be using dialog.showOpenDialog in main/index.js
-        // but this is easier
-        const path = window.electron.webUtils.getPathForFile(file);
-        await window.api.uploadFile(selectedTopic.id, path);
-        await fetchFiles(selectedTopic.id);
-      }
-    }
-  }
-
-  async function fetchFiles(topicId) {
-    files = await window.api.getFiles(topicId);
-  }
-
   onMount(fetchTopics);
 </script>
 
@@ -48,26 +36,12 @@
 
   <List>
     {#each topics as topic (topic.id)}
-      <Item onclick={() => { selectedTopic = topic; fetchFiles(topic.id); }}>
+      <!-- using onclick instead of on:click here cause Item is using svelte5 -->
+      <Item onclick={() => { selectedTopic = topic; }}>
         {topic.name}
       </Item>
     {/each}
   </List>
-
-  {#if selectedTopic}
-    <h3>Files in {selectedTopic.name}</h3>
-    <input 
-      type="file" 
-      multiple
-      accept=".jpg, .jpeg, .png, .docx, .doc, .docm, .pdf, .odt, .txt, .ppt, .pptx, .ppsx"
-      on:change={uploadFiles} 
-    />
-    <List>
-      {#each files as file (file.id)}
-        <Item>{file.file_name}</Item>
-      {/each}
-    </List>
-  {/if}
 </div>
 
 <!-- <style>

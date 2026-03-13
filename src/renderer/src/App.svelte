@@ -1,6 +1,8 @@
 <script>
   import Versions from './components/Versions.svelte'
-  import TopicManager from './components/TopicManager.svelte';
+  import TopicManager from './components/TopicManager.svelte'
+  import FileUploader from './components/FileUploader.svelte'
+  import List, { Item } from '@smui/list';
   import LinearProgress from '@smui/linear-progress';
   import {onMount} from 'svelte'
   import 'svelte-material-ui/themes/svelte.css'
@@ -14,6 +16,17 @@
   )
 
   let ollamaReady = $state(false);
+  let selectedTopic = $state(null);
+  let files = $state([]);
+  $effect(async () => {
+    if (selectedTopic) {
+      await fetchFiles(selectedTopic.id);
+    }
+  })
+
+  async function fetchFiles(topicId) {
+    files = await window.api.getFiles(topicId);
+  }
 
   onMount(() => {
     window.api.onOllamaStatus((status) => {
@@ -49,7 +62,19 @@
     <a target="_blank" rel="noreferrer" on:click={ipcHandle}>Send IPC</a>
   </div>
 </div>
-<TopicManager />
+
+<TopicManager bind:selectedTopic />
+
+{#if selectedTopic}
+  <h3>Files in {selectedTopic.name}</h3>
+  <FileUploader {selectedTopic} on:filesUpdated={() => fetchFiles(selectedTopic.id)} />
+  <List>
+    {#each files as file (file.id)}
+      <Item>{file.file_name}</Item>
+    {/each}
+  </List>
+{/if}
+
 <Versions />
 
 <style>
