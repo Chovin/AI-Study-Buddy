@@ -67,7 +67,12 @@
     editInputRef?.focus();
   }
 
-  onMount(fetchTopics);
+  onMount(async () => {
+    await fetchTopics();
+    if (topics.length > 0) {
+      selectedTopic = topics[0];
+    }
+  });
 </script>
 
 <div>
