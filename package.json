@@ -21,6 +21,7 @@
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "electron-ollama": "^0.1.25",
+    "material-icons": "^1.13.14",
     "ollama": "^0.6.3",
     "sqlite3": "^5.1.7",
     "svelte-material-ui": "^8.0.3"
@@ -29,6 +30,7 @@
     "@electron-toolkit/eslint-config": "^2.1.0",
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
     "@smui/button": "^8.0.3",
+    "@smui/icon-button": "^8.0.3",
     "@smui/linear-progress": "^8.0.3",
     "@smui/list": "^8.0.3",
     "@smui/textfield": "^8.0.3",

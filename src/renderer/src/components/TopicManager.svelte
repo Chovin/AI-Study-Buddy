@@ -3,6 +3,7 @@
   import TextField from '@smui/textfield';
   import Button from '@smui/button';
   import List, { Item } from '@smui/list';
+  import IconButton from '@smui/icon-button';
 
 
   // this file is using svelte v4
@@ -13,6 +14,9 @@
   let topics = [];
   let newTopic = '';
   export let selectedTopic = null;
+  let editingTopicId = null;
+  let editingTopicName = '';
+  let editInputRef = null;
 
   async function fetchTopics() {
     topics = await window.api.getTopics();
@@ -26,6 +30,43 @@
     }
   }
 
+  async function saveEditTopic() {
+    if (editingTopicName.trim()) {
+      await window.api.updateTopic(editingTopicId, editingTopicName.trim());
+      editingTopicId = null;
+      editingTopicName = '';
+      await fetchTopics();
+    }
+  }
+
+  function cancelEdit() {
+    editingTopicId = null;
+    editingTopicName = '';
+  }
+
+  async function deleteTopic(topic) {
+    if (confirm(`Are you sure you want to delete the topic "${topic.name}" and all its files?`)) {
+      await window.api.deleteTopic(topic.id);
+      if (selectedTopic?.id === topic.id) {
+        selectedTopic = null;
+      }
+      await fetchTopics();
+    }
+  }
+
+  async function handleKeyDown(event) {
+    if (event.key === 'Enter') {
+      await saveEditTopic();
+    } else if (event.key === 'Escape') {
+      cancelEdit();
+    }
+  }
+
+  // this is a svelte v4 effect. it gets executed whenever editInputRef changes
+  $: {
+    editInputRef?.focus();
+  }
+
   onMount(fetchTopics);
 </script>
 
@@ -36,9 +77,18 @@
 
   <List>
     {#each topics as topic (topic.id)}
-      <!-- using onclick instead of on:click here cause Item is using svelte5 -->
-      <Item onclick={() => { selectedTopic = topic; }}>
-        {topic.name}
+      <Item>
+        {#if editingTopicId === topic.id}
+          <TextField bind:value={editingTopicName} outlined onkeydown={handleKeyDown} bind:this={editInputRef} />
+          <IconButton onclick={saveEditTopic}><span class="material-icons-outlined">save</span></IconButton>
+          <IconButton onclick={cancelEdit}><span class="material-icons-outlined">cancel</span></IconButton>
+        {:else}
+          <span onclick={() => { selectedTopic = topic; }}>{topic.name}</span>
+          <IconButton onclick={() => { editingTopicId = topic.id; editingTopicName = topic.name; focusEditInput(); }}>
+            <span class="material-icons-outlined">edit</span>
+          </IconButton>
+          <IconButton onclick={() => deleteTopic(topic)}><span class="material-icons-outlined">delete</span></IconButton>
+        {/if}
       </Item>
     {/each}
   </List>

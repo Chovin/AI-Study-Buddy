@@ -22,6 +22,12 @@ const api = {
   createTopic: async (name) => {
     return await electronAPI.ipcRenderer.invoke('create-topic', name)
   },
+  updateTopic: async (topicId, newName) => {
+    return await electronAPI.ipcRenderer.invoke('update-topic', { topicId, newName })
+  },
+  deleteTopic: async (topicId) => {
+    return await electronAPI.ipcRenderer.invoke('delete-topic', topicId)
+  },
   uploadFile: async (topicId, filePath) => {
     return await electronAPI.ipcRenderer.invoke('upload-file', { topicId, filePath })
   }

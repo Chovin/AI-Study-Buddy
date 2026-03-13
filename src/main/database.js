@@ -85,6 +85,19 @@ class Database {
     const query = `SELECT * FROM files WHERE topic_id = ?`;
     return await this.allAsync(query, [topicId]);
   }
+
+  async updateTopic(topicId, newName) {
+    const query = `UPDATE topics SET name = ? WHERE id = ?`;
+    await this.runAsync(query, [newName, topicId]);
+  }
+
+  async deleteTopic(topicId) {
+    const deleteFilesQuery = `DELETE FROM files WHERE topic_id = ?`;
+    const deleteTopicQuery = `DELETE FROM topics WHERE id = ?`;
+
+    await this.runAsync(deleteFilesQuery, [topicId]);
+    await this.runAsync(deleteTopicQuery, [topicId]);
+  }
 }
 
 export default Database;

@@ -6,6 +6,7 @@
   import LinearProgress from '@smui/linear-progress';
   import {onMount} from 'svelte'
   import 'svelte-material-ui/themes/svelte.css'
+  import 'material-icons/iconfont/material-icons.css'
 
   let progress = $state(0)
   let ollamaState = $state('starting')

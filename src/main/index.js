@@ -150,3 +150,21 @@ ipcMain.handle('get-files', async (_, topicId) => {
     throw new Error(err.message);
   }
 });
+
+ipcMain.handle('update-topic', async (_, { topicId, newName }) => {
+  try {
+    await db.updateTopic(topicId, newName);
+    return 'Topic updated successfully';
+  } catch (err) {
+    throw new Error(err.message);
+  }
+});
+
+ipcMain.handle('delete-topic', async (_, topicId) => {
+  try {
+    await db.deleteTopic(topicId);
+    return 'Topic deleted successfully';
+  } catch (err) {
+    throw new Error(err.message);
+  }
+});
