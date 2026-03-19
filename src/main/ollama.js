@@ -33,6 +33,7 @@ export async function setupElectronOllama(mainWindow) {
   } else {
     console.log('Ollama server is already running')
   }
+  mainWindow.webContents.send('ollama-ready')
   return eo
 }
 
@@ -83,7 +84,6 @@ export async function setupOllama(mainWindow, modelName) {
   }
 
   mainWindow.webContents.send('ollama-status', {state: 'ready', message: 'Model is ready!', progress: 1})
-  mainWindow.webContents.send('ollama-ready')
 
   return ollama
 }
