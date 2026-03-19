@@ -3,12 +3,12 @@ import { fileURLToPath } from 'url'
 import { join, dirname } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import setupOllama from './ollama'
+import { setupElectronOllama, setupOllama } from './ollama'
 import models from './models'
 import fs from 'fs'
 import path from 'path'
 import Database from './database'
-
+import { Ollama } from 'ollama'
 const MODEL_NAME = Object.keys(models)[1] // switch to 1 for smaller model during development
 
 let ollamaInstance = null
@@ -29,13 +29,11 @@ function createWindow() {
     }
   })
 
-  mainWindow.on('ready-to-show', () => {
+  mainWindow.on('ready-to-show', async () => {
     mainWindow.show()
-    if (!ollamaInstance) {
-      setupOllama(mainWindow, MODEL_NAME).then(({ eo, ollama }) => {
-        ollamaInstance = ollama
-        electronOllamaInstance = eo
-      })
+    if (!electronOllamaInstance) {
+      electronOllamaInstance = await setupElectronOllama(mainWindow);
+      ollamaInstance = await setupOllama(mainWindow, MODEL_NAME);
     }
   })
 
@@ -177,4 +175,26 @@ ipcMain.handle('delete-topic', async (_, topicId) => {
   } catch (err) {
     throw new Error(err.message);
   }
+});
+
+ipcMain.handle('get-models', () => {
+  return models;
+});
+
+ipcMain.handle('download-model', async (event, modelName) => {
+  // Assume electronOllamaInstance is set
+  if (!electronOllamaInstance) {
+    throw new Error('Ollama server not initialized');
+  }
+  const ollama = new Ollama({ baseURL: 'http://localhost:11434' });
+  // Check if installed
+  const installedModels = await ollama.list();
+  if (installedModels.models.some(m => m.name === modelName)) {
+    return 'Model already installed';
+  }
+  // Download
+  for await (const event of await ollama.pull({ model: modelName, stream: true })) {
+    // Could send progress, but for now just wait
+  }
+  return 'Model downloaded successfully';
 });

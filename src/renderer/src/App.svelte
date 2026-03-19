@@ -5,6 +5,7 @@
   import List, { Item } from '@smui/list';
   import LinearProgress from '@smui/linear-progress';
   import IconButton from '@smui/icon-button';
+  import Select, { Option } from '@smui/select';
   import {onMount} from 'svelte'
   import 'svelte-material-ui/themes/svelte.css'
   import 'material-icons/iconfont/material-icons.css'
@@ -20,6 +21,8 @@
   let ollamaReady = $state(false);
   let selectedTopic = $state(null);
   let files = $state([]);
+  let models = $state([]);
+  let selectedModel = $state('');
   $effect(async () => {
     if (selectedTopic) {
       await fetchFiles(selectedTopic.id);
@@ -37,15 +40,25 @@
     }
   }
 
+  async function handleModelChange() {
+    try {
+      await window.api.downloadModel(selectedModel);
+      alert('Model downloaded successfully');
+    } catch (error) {
+      alert('Error downloading model: ' + error.message);
+    }
+  }
+
   onMount(() => {
     window.api.onOllamaStatus((status) => {
       ollamaState = status.state
       ollamaMsg = status.message
       progress = status.progress
     })
-
-    window.api.onOllamaReady(() => {
+    window.api.onOllamaReady(async () => {
       ollamaReady = true
+      models = window.api.models
+      selectedModel = Object.keys(models)[0] // default to first
     })
   })
 
@@ -61,6 +74,15 @@
 <div class="progress">
   <LinearProgress {progress} closed={ollamaReady} />
 </div>
+{#if ollamaReady}
+  <div class="model-selector">
+    <Select bind:value={selectedModel} label="Select Ollama Model" on:change={handleModelChange}>
+      {#each Object.keys(models) as model (model)}
+        <Option value={model}>{model}</Option>
+      {/each}
+    </Select>
+  </div>
+{/if}
 <p class="tip">Please try pressing <code>F12</code> to open the devTool</p>
 <div class="actions">
   <div class="action">
@@ -91,5 +113,8 @@
 <style>
   .progress {
     width: 450px;
+  }
+  .model-selector {
+    margin: 20px 0;
   }
 </style>

@@ -1,5 +1,6 @@
 import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import models from '../main/models'
 
 // Custom APIs for renderer
 const api = {
@@ -33,7 +34,14 @@ const api = {
   },
   uploadFile: async (topicId, filePath) => {
     return await electronAPI.ipcRenderer.invoke('upload-file', { topicId, filePath })
-  }
+  },
+  getModels: async () => {
+    return await electronAPI.ipcRenderer.invoke('get-models')
+  },
+  downloadModel: async (modelName) => {
+    return await electronAPI.ipcRenderer.invoke('download-model', modelName)
+  },
+  models
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
