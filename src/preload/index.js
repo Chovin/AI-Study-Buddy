@@ -10,8 +10,13 @@ const api = {
     })
   },
   onOllamaReady: (callback) => {
-    electronAPI.ipcRenderer.once('ollama-ready', () => {
-      callback()
+    electronAPI.ipcRenderer.on('ollama-ready', (state) => {
+      callback(state)
+    })
+  },
+  onProgressUpdate: (callback) => {
+    electronAPI.ipcRenderer.on('progress:update', (event, tasks) => {
+      callback(tasks)
     })
   },
   getTopics: async () => {

@@ -32,7 +32,16 @@ class Database {
         topic_id INTEGER NOT NULL,
         file_name TEXT NOT NULL,
         file_path TEXT NOT NULL,
+        webui_id TEXT NOT NULL,
         FOREIGN KEY (topic_id) REFERENCES topics (id)
+      )
+    `);
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        encrypted_api_key TEXT NOT NULL
       )
     `);
   }
@@ -103,6 +112,17 @@ class Database {
 
     await this.runAsync(deleteFilesQuery, [topicId]);
     await this.runAsync(deleteTopicQuery, [topicId]);
+  }
+
+  async saveUser(email, password, encryptedApiKey) {
+    const query = `INSERT INTO users (email, password, encrypted_api_key) VALUES (?, ?, ?)`;
+    await this.runAsync(query, [email, password, encryptedApiKey]);
+  }
+
+  async getUserByEmail(email) {
+    const query = `SELECT * FROM users WHERE email = ?`;
+    const users = await this.allAsync(query, [email]);
+    return users[0]; // Return the first user found (should be unique)
   }
 }
 

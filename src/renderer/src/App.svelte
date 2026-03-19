@@ -7,6 +7,8 @@
   import Button from '@smui/button';
   import IconButton from '@smui/icon-button';
   import Select, { Option } from '@smui/select';
+  import Textfield from '@smui/textfield';
+  import Button from '@smui/button';
   import {onMount} from 'svelte'
   import 'svelte-material-ui/themes/svelte.css'
   import 'material-icons/iconfont/material-icons.css'
@@ -18,12 +20,18 @@
     ollamaState == 'error' ? ollamaMsg :
     (ollamaMsg + ` ${parseInt(progress*100)}%`)
   )
-
+  let tasks = $state([]);
   let ollamaReady = $state(false);
   let selectedTopic = $state(null);
   let files = $state([]);
+  
   let models = $state([]);
   let selectedModel = $state('');
+
+
+  let responseString = $state("");
+  let question = $state("");
+
   $effect(async () => {
     if (selectedTopic) {
       await fetchFiles(selectedTopic.id);
@@ -61,19 +69,44 @@
       models = window.api.models
       selectedModel = Object.keys(models)[0] // default to first
     })
+    window.api.onProgressUpdate((ts) => {
+      console.log('update', ts)
+      tasks = ts.map(([id, attrs]) => {
+        attrs.percent = parseInt(attrs.progress*100)
+        return {id, ...attrs}
+      })
+      console.log('tasks', tasks)
+    })
   })
 
   const ipcHandle = () => window.electron.ipcRenderer.send('ping')
+
+  const sendChat = async () => {
+    console.log(question)
+    if (!selectedTopic || !question.trim()) return
+    console.log('chat')
+    responseString = await window.electron.ipcRenderer.invoke('chat', { topicId: selectedTopic.id, fileIds: files.map(f => f.id), question })
+    console.log(responseString);
+  }
 </script>
 
 <div class="creator">Powered by electron-vite</div>
-<div class="text">
-  Setting up Deepseek. 
-  <span class="svelte">{ollamaReady}</span>
-  <span class="svelte">{ollamaProgressMsg}</span>
-</div>
-<div class="progress">
-  <LinearProgress {progress} closed={ollamaReady} />
+{#each tasks as task (task.id)}
+  <div class="svelte">{task.msg}
+    {#if task.error}
+      <span>{task.error}</span>
+    {:else}
+      <span>{task.percent}%</span>
+    {/if}
+  </div>
+  <div class="progress">
+    <LinearProgress progress={task.progress} closed={task.progress==1}/>
+  </div>
+{/each}
+<Textfield bind:value={question}></Textfield>
+<Button onclick={sendChat}>Send</Button>
+<div>
+  <p>{responseString}</p>
 </div>
 {#if ollamaReady}
   <div class="model-selector">

@@ -4,11 +4,12 @@ import { join, dirname } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { setupElectronOllama, setupOllama } from './ollama'
+import progressManager from './progressManager'
 import models from './models'
 import fs from 'fs'
 import path from 'path'
 import Database from './database'
-import { Ollama } from 'ollama'
+
 const MODEL_NAME = Object.keys(models)[1] // switch to 1 for smaller model during development
 
 let ollamaInstance = null
@@ -31,9 +32,15 @@ function createWindow() {
 
   mainWindow.on('ready-to-show', async () => {
     mainWindow.show()
+
+    progressManager.on('update', (tasks) => {
+        mainWindow.webContents.send('progress:update', tasks);
+    });
+
     if (!electronOllamaInstance) {
-      electronOllamaInstance = await setupElectronOllama(mainWindow);
-      ollamaInstance = await setupOllama(mainWindow, MODEL_NAME);
+      electronOllamaInstance = await setupElectronOllama();
+      ollamaInstance = await setupOllama(MODEL_NAME);
+      mainWindow.webContents.send('ollama-ready')
     }
   })
 
@@ -97,7 +104,6 @@ app.on('window-all-closed', () => {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
-
 ipcMain.handle('create-topic', async (_, topicName) => {
   try {
     await db.createTopic(topicName);
@@ -177,24 +183,23 @@ ipcMain.handle('delete-topic', async (_, topicId) => {
   }
 });
 
-ipcMain.handle('get-models', () => {
-  return models;
-});
-
-ipcMain.handle('download-model', async (event, modelName) => {
-  // Assume electronOllamaInstance is set
-  if (!electronOllamaInstance) {
-    throw new Error('Ollama server not initialized');
+ipcMain.handle('chat', async (_, { topicId, fileIds, question }) => {
+  try {
+    console.log('Received chat request:', { topicId, fileIds, question })
+    const files = await db.getFilesByTopic(topicId);
+    console.log('Files for topic:', files)
+    const filePaths = files.filter(f => fileIds.includes(f.id)).map(f => f.file_path);
+    console.log('Chat request:', { topicId, fileIds, question, filePaths })
+    const response = await ollamaInstance.chat({
+      model: MODEL_NAME,
+      messages: [
+        { role: 'system', content: `You are an assistant for the following files: ${filePaths.join(', ')}. Use only the information from these files to answer the question. If you don't know the answer, say you don't know.` },
+        { role: 'user', content: question }
+      ]
+    })
+    console.log(response);
+    return response.message.content;
+  } catch (err) {
+    throw new Error(err.message);
   }
-  const ollama = new Ollama({ baseURL: 'http://localhost:11434' });
-  // Check if installed
-  const installedModels = await ollama.list();
-  if (installedModels.models.some(m => m.name === modelName)) {
-    return 'Model already installed';
-  }
-  // Download
-  for await (const event of await ollama.pull({ model: modelName, stream: true })) {
-    // Could send progress, but for now just wait
-  }
-  return 'Model downloaded successfully';
 });

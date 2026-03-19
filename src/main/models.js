@@ -3,6 +3,9 @@ export default {
         size: 5225376047
     },
     'deepseek-r1:1.5b': {
-        size: 1227136767
+        size: 1117322768
+    },
+    'deepseek-v3.1:671b-cloud': {
+        size: 405
     }
 }
