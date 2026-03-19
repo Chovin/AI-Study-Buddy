@@ -5,7 +5,7 @@ import path from 'path'
 import fs from 'fs'
 import models from './models'
 
-export default async function setupOllama(mainWindow, modelName) {
+export async function setupElectroOllama(mainWindow) {
   const eo = new ElectronOllama({
     basePath: app.getPath('userData'),
     modelsPath: path.join(app.getPath('userData'), 'models')
@@ -33,7 +33,10 @@ export default async function setupOllama(mainWindow, modelName) {
   } else {
     console.log('Ollama server is already running')
   }
+  return eo
+}
 
+export async function setupOllama(mainWindow, modelName) {
   // version check
   const liveVersion = await fetch('http://localhost:11434/api/version').then(res => res.json())
   console.log('Currently running Ollama', liveVersion)
@@ -43,11 +46,6 @@ export default async function setupOllama(mainWindow, modelName) {
 
   // can't figure out a way to grab the model list and sizes, so hardcode them from the models file
   const model = modelName || 'deepseek-r1:8b'
-  const modelSize = models[model]?.size || 5225376047
-
-  const modelPath = path.join(eo.config.basePath, 'models', model.replace(':', '_'))
-
-  console.log('model path: ', modelPath)
 
   // get client
   const ollama = new Ollama({baseURL: 'http://localhost:11434'})
@@ -87,5 +85,5 @@ export default async function setupOllama(mainWindow, modelName) {
   mainWindow.webContents.send('ollama-status', {state: 'ready', message: 'Model is ready!', progress: 1})
   mainWindow.webContents.send('ollama-ready')
   
-  return { eo, ollama }
+  return { ollama }
 }
