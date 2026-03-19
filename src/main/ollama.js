@@ -5,7 +5,7 @@ import path from 'path'
 import fs from 'fs'
 import models from './models'
 
-export async function setupElectroOllama(mainWindow) {
+export async function setupElectronOllama(mainWindow) {
   const eo = new ElectronOllama({
     basePath: app.getPath('userData'),
     modelsPath: path.join(app.getPath('userData'), 'models')
@@ -84,6 +84,6 @@ export async function setupOllama(mainWindow, modelName) {
 
   mainWindow.webContents.send('ollama-status', {state: 'ready', message: 'Model is ready!', progress: 1})
   mainWindow.webContents.send('ollama-ready')
-  
-  return { ollama }
+
+  return ollama
 }
