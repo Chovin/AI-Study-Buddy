@@ -4,6 +4,7 @@
   import FileUploader from './components/FileUploader.svelte'
   import List, { Item } from '@smui/list';
   import LinearProgress from '@smui/linear-progress';
+  import Button from '@smui/button';
   import IconButton from '@smui/icon-button';
   import Select, { Option } from '@smui/select';
   import {onMount} from 'svelte'
@@ -81,6 +82,7 @@
         <Option value={model}>{model}</Option>
       {/each}
     </Select>
+    <Button onclick={handleModelChange} raised>Download</Button>
   </div>
 {/if}
 <p class="tip">Please try pressing <code>F12</code> to open the devTool</p>
