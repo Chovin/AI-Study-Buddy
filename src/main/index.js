@@ -134,7 +134,7 @@ ipcMain.handle('upload-file', async (_, { topicId, filePath }) => {
 });
 
 ipcMain.handle('delete-file', async (_, fileId) => {
-  console.log('Deleting file:', { fileId })
+  console.log('Deleting file:', fileId)
   try {
     await db.deleteFile(fileId);
     return 'File deleted successfully';

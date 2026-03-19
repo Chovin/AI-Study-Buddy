@@ -20,7 +20,7 @@ const api = {
     return await electronAPI.ipcRenderer.invoke('get-files', topicId)
   },
   deleteFile: async (fileId) => {
-    return await electronAPI.ipcRenderer.invoke('delete-file', fileId )
+    return await electronAPI.ipcRenderer.invoke('delete-file', fileId)
   },
   createTopic: async (name) => {
     return await electronAPI.ipcRenderer.invoke('create-topic', name)
