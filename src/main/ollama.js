@@ -1,100 +1,169 @@
 import { ElectronOllama } from 'electron-ollama'
 import { app } from 'electron'
 import { Ollama } from 'ollama'
-import path from 'path'
-import fs from 'fs'
 import models from './models'
 import progressManager from './progressManager'
 
+class OllamaAPI {
+  constructor(basePath) {
+    this.electronOllama = new ElectronOllama({basePath})
+    this.ollamaClient = new Ollama({baseURL: 'http://localhost:11434'})
+    this._models = models
 
-export async function setupElectronOllama() {
-  const eo = new ElectronOllama({
-    basePath: app.getPath('userData')
-  })
+    this.summarizerModel = Object.entries(models).find(([_, o]) => o.summarizer)[0]
+    this.selectedModel = this.summarizerModel
 
-  // download/start Ollama server
-  const OLSPID = 'Setting Up Ollama Server'
-  progressManager.startTask(OLSPID, 'Downloading server...')
-
-  if (!(await eo.isRunning())) {
-    let metadata
-    try {
-      metadata = await eo.getMetadata('latest')
-    } catch (error) {
-      console.error('Failed to fetch Ollama metadata:', error)
-      progressManager.failTask(OLSPID, error)
-      return null
-    }
-    await eo.serve(metadata.version, {
-      serverLog: (message) => console.log('[Ollama]', message),
-      downloadLog: (percent, message) => {
-        console.log('[Ollama Download]', `${percent}%`, message)
-        progressManager.updateTask(OLSPID, {msg: 'Downloading Server...', progress: percent/100})
-      },
-    })
-  } else {
-    console.log('Ollama server is already running')
+    this.downloadingModels = {}
   }
 
-  // version check
-  const liveVersion = await fetch('http://localhost:11434/api/version').then(res => res.json())
-  console.log('Currently running Ollama', liveVersion)
-  // update here in case the eo.serve doesn't block until fully downloaded
-  progressManager.finishTask(OLSPID)
-
-  mainWindow.webContents.send('ollama-ready')
-  
-  return eo
-}
-
-export async function setupOllama(modelName) {
-  console.log('Loading model...')
-
-
-  // can't figure out a way to grab the model list and sizes, so hardcode them from the models file
-  const model = modelName || 'deepseek-r1:8b'
-
-  // get client
-  const OLCPID = 'Setting Up Ollama Client'
-  progressManager.startTask(OLCPID)
-
-  const ollama = new Ollama({baseURL: 'http://localhost:11434'})
-
-  // check if model is installed
-  let installedModels
-  try {
-    installedModels = await ollama.list()
-    console.log('Installed models:', installedModels)
-  } catch (error) {
-    console.error('Failed to list models:', error)
-    progressManager.failTask(OLCPID, 'Failed to communicate with Ollama server.', error)
+  get models() {
+    return { ...this._models }
   }
 
-  const modelInstalled = installedModels.models.some(m => m.name === model)
+  async startServer() {
+    // download/start Ollama server
+    const OLSPID = 'Setting Up Ollama Server'
+    progressManager.startTask(OLSPID, 'Downloading server...')
 
-  if (!modelInstalled) {
-    // start downloading model
-    progressManager.updateTask(OLCPID, {msg: 'Downloading ' + model + '...'})
+    let eo = this.electronOllama
 
-    let pulled = false
-    while (!pulled) {
+    if (!(await this.ollamaIsRunning())) {
+      let metadata
       try {
-        for await (const event of await ollama.pull({model, stream: true})) {
-          if (event.total && event.completed) {
-            const progress = event.completed / event.total
-            progressManager.updateTask(OLCPID, { progress })
-          }
-        }
-        pulled = true
+        metadata = await eo.getMetadata('latest')
       } catch (error) {
-        console.warn('Failed to pull model, retrying in 5 seconds...', error)
-        await new Promise(resolve => setTimeout(resolve, 5000))
+        console.error('Failed to fetch Ollama metadata:', error)
+        progressManager.failTask(OLSPID, error)
+        return null
       }
+      await eo.serve(metadata.version, {
+        serverLog: (message) => console.log('[Ollama]', message),
+        downloadLog: (percent, message) => {
+          console.log('[Ollama Download]', `${percent}%`, message)
+          progressManager.updateTask(OLSPID, {msg: 'Downloading Server...', progress: percent/100})
+        },
+      })
+    } else {
+      console.log('Ollama server is already running')
+    }
+
+    // version check
+    const liveVersion = await fetch('http://localhost:11434/api/version').then(res => res.json())
+    console.log('Currently running Ollama', liveVersion);
+
+    // record installed models
+    (await this.listModels()).forEach(({name, size}) => {
+      if (!this._models[name]) {
+        // add ones that are installed and not in models.js
+        this._models[name] = {size}
+      }
+      this._models[name].installed = true
+    })
+
+    // update here in case the eo.serve doesn't block until fully downloaded
+    progressManager.finishTask(OLSPID)
+  }
+
+  async ollamaIsRunning() {
+    return await this.electronOllama.isRunning()
+  }
+
+  async stopOllama() {
+    if (await this.ollamaIsRunning()) {
+      await this.electronOllama.getServer()?.stop()
     }
   }
 
+  async listModels() {
+    return (await this.ollamaClient.list()).models
+  }
 
-  progressManager.finishTask(OLCPID, 'Model ' + model + ' is ready!')
+  async modelInstalled(model) {
+    // downloadModel sets the .installed attr
+    if (this._models[model]?.installed) {return true}
 
-  return ollama
+    let models = (await this.listModels())
+    if (models.some(m => m.name === model)) {
+      this._models[model].installed = true
+      return true
+    }
+
+    return false
+  }
+
+  async downloadSummarizerModel() {
+    let msg = `Downloading summarizer model ${this.summarizerModel} (${this._models[this.summarizerModel].size})`
+    await this.downloadModel(this.summarizerModel, msg)
+  }
+
+  async downloadModel(model, msg = null) {
+    if (this._models[model].downloading) {
+      return false
+    }
+    this._models[model].downloading = true
+
+    const OLMPID = 'Downloading ' + model
+    progressManager.startTask(OLMPID, msg)
+
+    const getErrorType = (error) => {
+      // Ollama errors often have a message
+      // this particular error happens when the model name isn't in the Ollama database
+      // not sure if it happens because of other reasons
+      if (error.message?.includes('pull model manifest: file does not exist')) {
+        return new Error(`Model ${model} likely not found in Ollama database`)
+      }
+
+      return false
+    }
+
+    let didDownload = false
+    if (!(await this.modelInstalled(model))) {
+      // start downloading model
+      let pulled = false
+      while (!pulled) {
+        try {
+          for await (const event of await this.ollamaClient.pull({model, stream: true})) {
+            if (event.total && event.completed) {
+              const progress = event.completed / event.total
+              progressManager.updateTask(OLMPID, { status: 'running', progress, error: undefined })
+            }
+          }
+          pulled = true
+        } catch (error) {
+          let descriptiveError = getErrorType(error)
+          if (descriptiveError) {
+            progressManager.failTask(OLMPID, null, descriptiveError)
+            throw error
+          }
+
+          console.warn('Failed to pull model, retrying in 5 seconds...', error)
+          progressManager.updateTask(OLMPID, { error })
+          await new Promise(resolve => setTimeout(resolve, 5000))
+        } finally {
+          this._models[model].downloading = false
+        }
+      }
+      didDownload = true
+    }
+
+    this._models[model].installed = true
+    this._models[model].downloading = false
+    progressManager.finishTask(OLMPID, 'Model ' + model + ' is ready!')
+    return didDownload
+  }
+
+  async selectModel(model) {
+    if (await this.modelInstalled(model)) {
+      this.selectedModel = model
+    } else {
+      throw new Error(`Model ${model} not installed`)
+    }
+  }
+
+  async chat(args) {
+    if(!args.model) args.model = this.selectedModel
+    return await this.ollamaClient.chat(args)
+  }
 }
+
+export default new OllamaAPI(app.getPath('userData'))

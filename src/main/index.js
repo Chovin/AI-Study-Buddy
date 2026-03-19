@@ -1,20 +1,16 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { fileURLToPath } from 'url'
-import { join, dirname } from 'path'
+import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { setupElectronOllama, setupOllama } from './ollama'
+import ollamaApi from './ollama'
 import progressManager from './progressManager'
-import models from './models'
 import fs from 'fs'
 import path from 'path'
 import Database from './database'
 
-const MODEL_NAME = Object.keys(models)[1] // switch to 1 for smaller model during development
 
-let ollamaInstance = null
-let electronOllamaInstance = null
 let db;
+let mainWindow;
 
 function createWindow() {
   // Create the browser window.
@@ -37,11 +33,14 @@ function createWindow() {
         mainWindow.webContents.send('progress:update', tasks);
     });
 
-    if (!electronOllamaInstance) {
-      electronOllamaInstance = await setupElectronOllama();
-      ollamaInstance = await setupOllama(MODEL_NAME);
-      mainWindow.webContents.send('ollama-ready')
-    }
+    // downloads and starts ElectionOllama server
+    await ollamaApi.startServer()
+
+    // download the summarizer because that at the least is needed for the app to function
+    await ollamaApi.downloadSummarizerModel()
+
+    console.log('ollama ready')
+    mainWindow.webContents.send('ollama-ready')
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -56,6 +55,8 @@ function createWindow() {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  return mainWindow
 }
 
 // This method will be called when Electron has finished
@@ -76,15 +77,13 @@ app.whenReady().then(() => {
   })
 
   app.on('will-quit', async () => {
-    if (electronOllamaInstance) {
-      await electronOllamaInstance.getServer()?.stop()
-    }
+    await ollamaApi.stopOllama()
   })
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
-  createWindow()
+  mainWindow = createWindow()
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
@@ -104,6 +103,23 @@ app.on('window-all-closed', () => {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
+ipcMain.handle('progress:delete-task', (_, taskId) => {
+  progressManager.removeTask(taskId)
+})
+
+ipcMain.handle('get-models', () => {
+  return ollamaApi.models
+});
+
+ipcMain.handle('download-model', async (_, model) => {
+  if (!(await ollamaApi.ollamaIsRunning())) {
+    await ollamaApi.startServer()
+  }
+  let success = await ollamaApi.downloadModel(model);
+  mainWindow?.webContents.send('model-downloaded', model)
+  return success
+})
+
 ipcMain.handle('create-topic', async (_, topicName) => {
   try {
     await db.createTopic(topicName);
@@ -183,15 +199,15 @@ ipcMain.handle('delete-topic', async (_, topicId) => {
   }
 });
 
-ipcMain.handle('chat', async (_, { topicId, fileIds, question }) => {
+ipcMain.handle('chat', async (_, { model, topicId, fileIds, question }) => {
   try {
     console.log('Received chat request:', { topicId, fileIds, question })
     const files = await db.getFilesByTopic(topicId);
     console.log('Files for topic:', files)
     const filePaths = files.filter(f => fileIds.includes(f.id)).map(f => f.file_path);
     console.log('Chat request:', { topicId, fileIds, question, filePaths })
-    const response = await ollamaInstance.chat({
-      model: MODEL_NAME,
+    const response = await ollamaApi.chat({
+      model,
       messages: [
         { role: 'system', content: `You are an assistant for the following files: ${filePaths.join(', ')}. Use only the information from these files to answer the question. If you don't know the answer, say you don't know.` },
         { role: 'user', content: question }

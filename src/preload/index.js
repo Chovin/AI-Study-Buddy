@@ -1,6 +1,5 @@
 import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import models from '../main/models'
 
 // Custom APIs for renderer
 const api = {
@@ -18,6 +17,14 @@ const api = {
     electronAPI.ipcRenderer.on('progress:update', (event, tasks) => {
       callback(tasks)
     })
+  },
+  onModelDownloaded: (callback) => {
+    electronAPI.ipcRenderer.on('model-downloaded', (event, model) => {
+      callback(model)
+    })
+  },
+  deleteProgressTask: async (taskId) => {
+    return await electronAPI.ipcRenderer.invoke('progress:delete-task', taskId)
   },
   getTopics: async () => {
     return await electronAPI.ipcRenderer.invoke('get-topics')
@@ -45,8 +52,7 @@ const api = {
   },
   downloadModel: async (modelName) => {
     return await electronAPI.ipcRenderer.invoke('download-model', modelName)
-  },
-  models
+  }
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

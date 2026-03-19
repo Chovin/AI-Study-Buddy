@@ -10,6 +10,7 @@ class ProgressManager extends EventEmitter {
     msg = msg || 'Starting ' + id
     this.tasks.set(id, { progress: 0, status: 'running', msg, ...data });
     this.emitUpdate();
+    console.log(msg)
   }
 
   updateTask(id, updates) {
@@ -26,7 +27,7 @@ class ProgressManager extends EventEmitter {
     task.msg = msg;
     task.progress = 1;
     this.emitUpdate();
-    this.removeTask(id);
+    console.log(msg)
   }
 
   failTask(id, msg=null, error) {
@@ -37,21 +38,20 @@ class ProgressManager extends EventEmitter {
     task.msg = msg;
     task.error = error;
     this.emitUpdate();
-    this.removeTask(id);
+    console.log(msg, error)
   }
 
-  removeTask(id, delay=5000) {
-    console.log(`removing ${id} with delay`)
-    setTimeout(() => {
-      if (this.tasks.delete(id)) {
-        this.emitUpdate();
-      }
-    }, delay)
+  removeTask(id) {
+    console.log(`removing ${id}`)
+
+    if (this.tasks.delete(id)) {
+      this.emitUpdate();
+    }
   }
 
   emitUpdate() {
     let arr = Array.from(this.tasks.entries())
-    console.log('emitting update', arr)
+    console.info('emitting update', arr)
     this.emit('update', arr);
   }
 }

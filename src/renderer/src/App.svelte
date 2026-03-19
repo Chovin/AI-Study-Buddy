@@ -8,32 +8,39 @@
   import IconButton from '@smui/icon-button';
   import Select, { Option } from '@smui/select';
   import Textfield from '@smui/textfield';
-  import {onMount} from 'svelte'
+  import {onMount, untrack} from 'svelte'
   import 'svelte-material-ui/themes/svelte.css'
   import 'material-icons/iconfont/material-icons.css'
 
-  let progress = $state(0)
-  let ollamaState = $state('starting')
-  let ollamaMsg = $state('Initializing...')
-  let ollamaProgressMsg = $derived(
-    ollamaState == 'error' ? ollamaMsg :
-    (ollamaMsg + ` ${parseInt(progress*100)}%`)
-  )
   let tasks = $state([]);
   let ollamaReady = $state(false);
   let selectedTopic = $state(null);
   let files = $state([]);
   
   let models = $state([]);
+  // alphabetically sorted model list
+  let modelList = $derived.by(() => {
+    let keys = Object.keys(models);
+    keys.sort();
+    return keys
+  })
+
+  let modelToDownload = $state('');
   let selectedModel = $state('');
-
-
   let responseString = $state("");
   let question = $state("");
 
   $effect(async () => {
     if (selectedTopic) {
       await fetchFiles(selectedTopic.id);
+    }
+  })
+
+  $effect(() => {
+    // handle model select onchange since it wasn't triggering
+    let ms = untrack(() => models)
+    if (ms[modelToDownload]?.installed) {
+      selectedModel = modelToDownload
     }
   })
 
@@ -48,10 +55,20 @@
     }
   }
 
-  async function handleModelChange() {
+  async function handleModelDownload() {
+    let downloadingModel = modelToDownload
+
     try {
-      await window.api.downloadModel(selectedModel);
-      alert('Model downloaded successfully');
+      let success = await window.api.downloadModel(modelToDownload);
+      
+      if (success) {
+
+        if (downloadingModel === modelToDownload) {
+          selectedModel = modelToDownload
+        }
+
+        alert('Model downloaded successfully');
+      }
     } catch (error) {
       alert('Error downloading model: ' + error.message);
     }
@@ -65,26 +82,45 @@
     })
     window.api.onOllamaReady(async () => {
       ollamaReady = true
-      models = window.api.models
-      selectedModel = Object.keys(models)[0] // default to first
+      models = await window.api.getModels()
+      modelToDownload = Object.entries(models).find(([_, o]) => o.summarizer)[0]
+      selectedModel = modelToDownload
     })
+    let deleted = {}
     window.api.onProgressUpdate((ts) => {
       console.log('update', ts)
       tasks = ts.map(([id, attrs]) => {
         attrs.percent = parseInt(attrs.progress*100)
+
+        if (attrs.status != 'running' && !deleted[id]) {
+          deleted[id] = true
+          setTimeout(async () => {
+            await window.api.deleteProgressTask(id)
+            delete deleted[id]
+          }, 5000)
+        }
+
         return {id, ...attrs}
       })
       console.log('tasks', tasks)
+    })
+    window.api.onModelDownloaded(async (model) => {
+      models = await window.api.getModels()
     })
   })
 
   const ipcHandle = () => window.electron.ipcRenderer.send('ping')
 
+  const handleChatKeyDown = async (event) => {
+    if (event.key === 'Enter') {
+      await sendChat()
+    }
+  }
+
   const sendChat = async () => {
     console.log(question)
     if (!selectedTopic || !question.trim()) return
-    console.log('chat')
-    responseString = await window.electron.ipcRenderer.invoke('chat', { topicId: selectedTopic.id, fileIds: files.map(f => f.id), question })
+    responseString = await window.electron.ipcRenderer.invoke('chat', { model: selectedModel, topicId: selectedTopic.id, fileIds: files.map(f => f.id), question })
     console.log(responseString);
   }
 </script>
@@ -99,23 +135,26 @@
     {/if}
   </div>
   <div class="progress">
-    <LinearProgress progress={task.progress} closed={task.progress==1}/>
+    <LinearProgress progress={task.progress} closed={task.status !== 'running'}/>
   </div>
 {/each}
-<Textfield bind:value={question}></Textfield>
+<Textfield bind:value={question} onkeydown={handleChatKeyDown}></Textfield>
 <Button onclick={sendChat}>Send</Button>
 <div>
   <p>{responseString}</p>
 </div>
 {#if ollamaReady}
   <div class="model-selector">
-    <Select bind:value={selectedModel} label="Select Ollama Model" on:change={handleModelChange}>
-      {#each Object.keys(models) as model (model)}
-        <Option value={model}>{model}</Option>
+    <Select bind:value={modelToDownload} label="Select Ollama Model">
+      {#each modelList as model (model)}
+        <Option value={model}>{model} ({models[model].size})</Option>
       {/each}
     </Select>
-    <Button onclick={handleModelChange} raised>Download</Button>
+    {#if !models[modelToDownload]?.installed}
+      <Button onclick={handleModelDownload} raised>Download</Button>
+    {/if}
   </div>
+  <div>Using {selectedModel}</div>
 {/if}
 <p class="tip">Please try pressing <code>F12</code> to open the devTool</p>
 <div class="actions">
