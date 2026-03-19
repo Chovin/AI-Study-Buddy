@@ -8,7 +8,6 @@
   import IconButton from '@smui/icon-button';
   import Select, { Option } from '@smui/select';
   import Textfield from '@smui/textfield';
-  import Button from '@smui/button';
   import {onMount} from 'svelte'
   import 'svelte-material-ui/themes/svelte.css'
   import 'material-icons/iconfont/material-icons.css'
