@@ -71,6 +71,12 @@ class Database {
     return result.lastID; // Return the file_id
   }
 
+  async deleteFile(fileId) {
+    const query = `
+      DELETE FROM files WHERE id = ?`;
+    await this.runAsync(query, [fileId]);
+  }
+
   async updateFilePath(fileId, filePath) {
     const query = `UPDATE files SET file_path = ? WHERE id = ?`;
     await this.runAsync(query, [filePath, fileId]);

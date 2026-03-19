@@ -4,6 +4,7 @@
   import FileUploader from './components/FileUploader.svelte'
   import List, { Item } from '@smui/list';
   import LinearProgress from '@smui/linear-progress';
+  import IconButton from '@smui/icon-button';
   import {onMount} from 'svelte'
   import 'svelte-material-ui/themes/svelte.css'
   import 'material-icons/iconfont/material-icons.css'
@@ -27,6 +28,13 @@
 
   async function fetchFiles(topicId) {
     files = await window.api.getFiles(topicId);
+  }
+
+  async function deleteFile(fileId) {
+    if (confirm('Are you sure you want to delete this file?')) {
+      await window.api.deleteFile(fileId);
+      await fetchFiles(selectedTopic.id);
+    }
   }
 
   onMount(() => {
@@ -71,7 +79,9 @@
   <FileUploader {selectedTopic} on:filesUpdated={() => fetchFiles(selectedTopic.id)} />
   <List>
     {#each files as file (file.id)}
-      <Item>{file.file_name}</Item>
+      <Item>{file.file_name}
+        <IconButton onclick={() => deleteFile(file.id)}><span class="material-icons-outlined">delete</span></IconButton>
+      </Item>
     {/each}
   </List>
 {/if}
