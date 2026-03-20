@@ -2,6 +2,7 @@
   import Versions from './components/Versions.svelte'
   import TopicManager from './components/TopicManager.svelte'
   import FileUploader from './components/FileUploader.svelte'
+  import ModelChooser from './components/ModelChooser.svelte';
   import List, { Item } from '@smui/list';
   import LinearProgress from '@smui/linear-progress';
   import Button from '@smui/button';
@@ -17,15 +18,8 @@
   let selectedTopic = $state(null);
   let files = $state([]);
   
-  let models = $state([]);
-  // alphabetically sorted model list
-  let modelList = $derived.by(() => {
-    let keys = Object.keys(models);
-    keys.sort();
-    return keys
-  })
-
-  let modelToDownload = $state('');
+  let models = $state({});
+  
   let selectedModel = $state('');
   let responseString = $state("");
   let question = $state("");
@@ -47,31 +41,6 @@
     }
   }
 
-  function handleModelChange() {
-    if (models[modelToDownload].installed) {
-      selectedModel = modelToDownload
-    }
-  }
-
-  async function handleModelDownload() {
-    let downloadingModel = modelToDownload
-
-    try {
-      let success = await window.api.downloadModel(modelToDownload);
-      
-      if (success) {
-
-        if (downloadingModel === modelToDownload) {
-          selectedModel = modelToDownload
-        }
-
-        alert('Model downloaded successfully');
-      }
-    } catch (error) {
-      alert('Error downloading model: ' + error.message);
-    }
-  }
-
   onMount(() => {
     window.api.onOllamaStatus((status) => {
       ollamaState = status.state
@@ -79,10 +48,9 @@
       progress = status.progress
     })
     window.api.onOllamaReady(async () => {
-      ollamaReady = true
       models = await window.api.getModels()
-      modelToDownload = Object.entries(models).find(([_, o]) => o.summarizer)[0]
-      selectedModel = modelToDownload
+      selectedModel = Object.entries(models).find(([_, o]) => o.summarizer)[0]
+      ollamaReady = true
     })
     let deleted = {}
     window.api.onProgressUpdate((ts) => {
@@ -142,17 +110,7 @@
   <p>{responseString}</p>
 </div>
 {#if ollamaReady}
-  <div class="model-selector">
-    <Select bind:value={modelToDownload} label="Select Ollama Model" onSMUISelectChange={handleModelChange}>
-      {#each modelList as model (model)}
-        <Option value={model}>{model} ({models[model].size})</Option>
-      {/each}
-    </Select>
-    {#if !models[modelToDownload]?.installed}
-      <Button onclick={handleModelDownload} raised>Download</Button>
-    {/if}
-  </div>
-  <div>Using {selectedModel}</div>
+  <ModelChooser bind:models bind:selectedModel/>
 {/if}
 <p class="tip">Please try pressing <code>F12</code> to open the devTool</p>
 <div class="actions">
