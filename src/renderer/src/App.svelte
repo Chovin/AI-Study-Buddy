@@ -8,7 +8,7 @@
   import IconButton from '@smui/icon-button';
   import Select, { Option } from '@smui/select';
   import Textfield from '@smui/textfield';
-  import {onMount, untrack} from 'svelte'
+  import {onMount} from 'svelte'
   import 'svelte-material-ui/themes/svelte.css'
   import 'material-icons/iconfont/material-icons.css'
 
@@ -36,14 +36,6 @@
     }
   })
 
-  $effect(() => {
-    // handle model select onchange since it wasn't triggering
-    let ms = untrack(() => models)
-    if (ms[modelToDownload]?.installed) {
-      selectedModel = modelToDownload
-    }
-  })
-
   async function fetchFiles(topicId) {
     files = await window.api.getFiles(topicId);
   }
@@ -52,6 +44,12 @@
     if (confirm('Are you sure you want to delete this file?')) {
       await window.api.deleteFile(fileId);
       await fetchFiles(selectedTopic.id);
+    }
+  }
+
+  function handleModelChange() {
+    if (models[modelToDownload].installed) {
+      selectedModel = modelToDownload
     }
   }
 
@@ -145,7 +143,7 @@
 </div>
 {#if ollamaReady}
   <div class="model-selector">
-    <Select bind:value={modelToDownload} label="Select Ollama Model">
+    <Select bind:value={modelToDownload} label="Select Ollama Model" onSMUISelectChange={handleModelChange}>
       {#each modelList as model (model)}
         <Option value={model}>{model} ({models[model].size})</Option>
       {/each}
