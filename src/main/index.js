@@ -216,6 +216,9 @@ ipcMain.handle('chat', async (_, { model, topicId, fileIds, question }) => {
     console.log(response);
     return response.message.content;
   } catch (err) {
+    if (err.error == 'unauthorized' || err.status_code == 401) {
+      throw new Error("Cloud models require signing into Ollama")
+    }
     throw new Error(err.message);
   }
 });

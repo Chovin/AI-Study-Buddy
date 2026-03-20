@@ -61,7 +61,12 @@
   const sendChat = async () => {
     console.log(question)
     if (!selectedTopic || !question.trim()) return
-    responseString = await window.electron.ipcRenderer.invoke('chat', { model: selectedModel, topicId: selectedTopic.id, fileIds: files.map(f => f.id), question })
+    try {
+      responseString = await window.electron.ipcRenderer.invoke('chat', { model: selectedModel, topicId: selectedTopic.id, fileIds: files.map(f => f.id), question })
+    } catch (error) {
+      responseString = error.message
+      throw error
+    }
     console.log(responseString);
   }
 </script>

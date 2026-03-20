@@ -1,6 +1,7 @@
 import { ElectronOllama } from 'electron-ollama'
 import { app } from 'electron'
 import { Ollama } from 'ollama'
+import { runCommand } from './terminalProcess'
 import models from './models'
 import progressManager from './progressManager'
 
@@ -160,9 +161,20 @@ class OllamaAPI {
     }
   }
 
+  async promptLogin() {
+    await runCommand("ollama", ["signin"])
+  }
+
   async chat(args) {
     if(!args.model) args.model = this.selectedModel
-    return await this.ollamaClient.chat(args)
+    try {
+      return await this.ollamaClient.chat(args)
+    } catch (error) {
+      if (error.error == 'unauthorized' || error.status_code == 401) {
+        await this.promptLogin()
+        throw error
+      }
+    }
   }
 }
 
