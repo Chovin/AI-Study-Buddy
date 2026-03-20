@@ -3,24 +3,22 @@
   import TopicManager from './components/TopicManager.svelte'
   import FileUploader from './components/FileUploader.svelte'
   import ModelChooser from './components/ModelChooser.svelte';
+  import ProgressNotifications from './components/ProgressNotifications.svelte';
   import List, { Item } from '@smui/list';
-  import LinearProgress from '@smui/linear-progress';
   import Button from '@smui/button';
   import IconButton from '@smui/icon-button';
-  import Select, { Option } from '@smui/select';
   import Textfield from '@smui/textfield';
   import {onMount} from 'svelte'
   import 'svelte-material-ui/themes/svelte.css'
   import 'material-icons/iconfont/material-icons.css'
 
-  let tasks = $state([]);
   let ollamaReady = $state(false);
   let selectedTopic = $state(null);
   let files = $state([]);
   
   let models = $state({});
-  
   let selectedModel = $state('');
+
   let responseString = $state("");
   let question = $state("");
 
@@ -42,33 +40,10 @@
   }
 
   onMount(() => {
-    window.api.onOllamaStatus((status) => {
-      ollamaState = status.state
-      ollamaMsg = status.message
-      progress = status.progress
-    })
     window.api.onOllamaReady(async () => {
       models = await window.api.getModels()
       selectedModel = Object.entries(models).find(([_, o]) => o.summarizer)[0]
       ollamaReady = true
-    })
-    let deleted = {}
-    window.api.onProgressUpdate((ts) => {
-      console.log('update', ts)
-      tasks = ts.map(([id, attrs]) => {
-        attrs.percent = parseInt(attrs.progress*100)
-
-        if (attrs.status != 'running' && !deleted[id]) {
-          deleted[id] = true
-          setTimeout(async () => {
-            await window.api.deleteProgressTask(id)
-            delete deleted[id]
-          }, 5000)
-        }
-
-        return {id, ...attrs}
-      })
-      console.log('tasks', tasks)
     })
     window.api.onModelDownloaded(async (model) => {
       models = await window.api.getModels()
@@ -92,18 +67,7 @@
 </script>
 
 <div class="creator">Powered by electron-vite</div>
-{#each tasks as task (task.id)}
-  <div class="svelte">{task.msg}
-    {#if task.error}
-      <span>{task.error}</span>
-    {:else}
-      <span>{task.percent}%</span>
-    {/if}
-  </div>
-  <div class="progress">
-    <LinearProgress progress={task.progress} closed={task.status !== 'running'}/>
-  </div>
-{/each}
+<ProgressNotifications/>
 <Textfield bind:value={question} onkeydown={handleChatKeyDown}></Textfield>
 <Button onclick={sendChat}>Send</Button>
 <div>
@@ -140,9 +104,6 @@
 <Versions />
 
 <style>
-  .progress {
-    width: 450px;
-  }
   .model-selector {
     margin: 20px 0;
   }
