@@ -11,7 +11,8 @@
   // alphabetically sorted model list
   let modelList = $derived.by(() => {
     let keys = Object.keys(models);
-    keys.sort();
+    // actually makes more sense to keep them sorted like the ollama app
+    // keys.sort();
     return keys
   })
 
