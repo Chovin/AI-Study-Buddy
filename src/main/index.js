@@ -75,10 +75,35 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  app.on('will-quit', async () => {
-    console.log('== quitting ==')
-    await llmApi.stopServers()
-  })
+  let isQuitting = false
+  app.on('before-quit', (event) => {
+    if (isQuitting) return; // prevent recursion if we call app.quit() again
+    isQuitting = true;
+
+    console.log('== before quit: cleaning up servers ==');
+    event.preventDefault(); // stop Electron from quitting immediately
+
+    // Stop both servers with a timeout in case something hangs
+    const cleanupPromise = llmApi.stopServers();
+
+    const timeout = new Promise((resolve) => {
+      setTimeout(() => {
+        console.warn('Server cleanup took too long, forcing quit...');
+        resolve();
+      }, 8000); // max wait 8 seconds
+    });
+
+    // Wait for either cleanup or timeout
+    Promise.race([cleanupPromise, timeout])
+      .then(() => {
+        console.log('Cleanup done, quitting app now');
+        app.quit(); // manually quit after cleanup
+      })
+      .catch((err) => {
+        console.error('Error during cleanup, quitting anyway:', err);
+        app.quit();
+      });
+  });
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
