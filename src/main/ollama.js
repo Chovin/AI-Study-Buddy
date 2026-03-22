@@ -1,11 +1,30 @@
 import { ElectronOllama } from 'electron-ollama'
-import { app } from 'electron'
+import { app, safeStorage } from 'electron'
 import { Ollama } from 'ollama'
-import { runCommand } from './terminalProcess'
+import { runCommand, makeRequest, generateSecurePassword } from './helpers'
 import models from './models'
 import progressManager from './progressManager'
+import fs from 'fs'
+import path from 'path'
 
-class OllamaAPI {
+const WEBUI_BASE_URL = 'http://localhost:8080/api/v1';
+const PYTHON_CMD = process.platform === 'win32' ? 'python' : 'python3';
+
+const WEBUI_DIR = path.join(app.getPath('userData'), 'webui')
+const VENV_PATH = path.join(WEBUI_DIR, 'venv')
+
+if (!fs.existsSync(WEBUI_DIR)) {
+  fs.mkdirSync(WEBUI_DIR, { recursive: true })
+}
+
+const VENV_PYTHON = process.platform === 'win32'
+  ? path.join(VENV_PATH, 'Scripts', 'python.exe')
+  : path.join(VENV_PATH, 'bin', 'python')
+
+const WUIPID = 'Setting up Open WebUI Server'
+
+
+class LLMInterface {
   constructor(basePath) {
     this.electronOllama = new ElectronOllama({basePath})
     this.ollamaClient = new Ollama({baseURL: 'http://localhost:11434'})
@@ -21,7 +40,213 @@ class OllamaAPI {
     return { ...this._models }
   }
 
-  async startServer() {
+  async start(ollamaReadyCallback) {
+    // we can download and start ollama at the same time we're downloading open webui
+    await Promise.all([
+      (async () => {
+        console.log('starting ollama')
+        await this.startOllama()
+        console.log('ollama started')
+        if (ollamaReadyCallback) ollamaReadyCallback()
+        await this.downloadSummarizerModel()
+      })(),
+      this.installOpenWebUI()
+    ])
+    
+    await this.startWebUI()
+  }
+
+  async ensureVenv() {
+    try {
+      // check Python version first
+      await runCommand(PYTHON_CMD, ['--version'])
+    } catch {
+      throw new Error('Python 3 not found. Please install Python 3.11+ first.')
+    }
+
+    if (!fs.existsSync(VENV_PATH)) {
+      await runCommand(PYTHON_CMD, ['-m', 'venv', VENV_PATH])
+    }
+  }
+
+  async isWebUIInstalled() {
+    // 1. venv must exist
+    await this.ensureVenv()
+
+    try {
+      // 2. check if package exists inside venv
+      await runCommand(VENV_PYTHON, ['-c', 'import open_webui'])
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async installOpenWebUI() {
+    progressManager.startTask(WUIPID, 'Downloading Open WebUI...', {progress: null})
+    await this.ensureVenv()
+
+    if (await this.isWebUIInstalled()) {
+      console.log(`Open WebUI installed`)
+      return
+    }
+
+    console.log('Starting Open WebUI installation...')
+    let lastLibrary = null
+    // let lastProgress = 0;
+    try {
+      await runCommand(VENV_PYTHON, ['-m', 'pip', 'install', '--upgrade', 'pip'])
+      const output = await runCommand(VENV_PYTHON, ['-m', 'pip', 'install', 'open-webui'], {
+        stdoutCallback: (data) => {
+          // pip install doesn't give percentage
+          const matchLibrary = data.match(/Downloading (.+?)-/)
+          let library = lastLibrary
+          if (matchLibrary) {
+            library = matchLibrary[1]
+          }
+
+          if (
+            // progress !== lastProgress || 
+            library != lastLibrary
+          ) {
+            // lastProgress = progress;
+            lastLibrary = library
+            let msg = `Downloading Open WebUI (${library})...`
+            progressManager.updateTask(WUIPID, { status: 'running', progress: null, msg });
+          }
+        }
+      })
+      console.log('Installation successful!', output)
+    } catch (error) {
+      console.error('Installation failed:', error)
+      progressManager.failTask(WUIPID)
+      throw error
+    }
+    
+    console.log(`Open WebUI installed`)
+  }
+
+  async startWebUI() {
+    progressManager.updateTask(WUIPID, {msg: "Starting Open WebUI Server..."})
+    this.webuiProcess = await this.startOpenWebUIProcess()
+    progressManager.updateTask(WUIPID, {msg: "Getting Open WebUI API Key..."})
+    this.webUIAPIKey = await this.ensureWebUIApiKey()
+    progressManager.finishTask(WUIPID, "Finished Starting Open WebUI")
+  }
+
+  async startOpenWebUIProcess() {
+    const env = {
+      ...process.env,
+      DATA_DIR: app.getPath('userData'),
+      OLLAMA_BASE_URL: 'http://127.0.0.1:11434',
+      WEBUI_AUTH: 'True',
+      DEFAULT_USER_ROLE: 'admin',
+      // these are needed to allow API key creation without GUI interaction
+      ENABLE_API_KEYS: 'True',
+      USER_PERMISSIONS_FEATURES_API_KEYS: 'True'
+    }
+
+    const scriptPath = process.platform === 'win32'
+      ? path.join(VENV_PATH, 'Scripts', 'open-webui.exe')
+      : path.join(VENV_PATH, 'bin', 'open-webui');
+
+    let lastProgress = null
+    // for some reason, open webui shows the download percentage in stderr
+    let lastErrProgress = null
+    const webuiProcess = await runCommand(scriptPath, ['serve'], {
+      env,
+      stdoutCallback: (str, process, resolve) => {
+        // Parse progress from stdout lines
+        // Example: "[  3%] ..." or "Downloading ... 45%"
+        const matchProgress = str.match(/(\d{1,3})%/);
+        let progress = lastProgress
+        if (matchProgress) {
+          progress = parseInt(matchProgress[1], 10) / 100;
+        }
+        if (progress != lastProgress) {
+          lastProgress = progress
+          progressManager.updateTask(WUIPID, {progress})
+        }
+        console.log(`[WebUI]: ${str}`)
+
+        if (str.includes('Started server process')) {
+          console.log('Open WebUI is ready!')
+          resolve(process)
+        }
+      },
+      stderrCallback: (str, process, resolve) => {
+        const matchProgress = str.match(/(\d{1,3})%/);
+        let progress = lastErrProgress
+        if (matchProgress) {
+          progress = parseInt(matchProgress[1], 10) / 100;
+        }
+        if (progress != lastErrProgress) {
+          lastErrProgress = progress
+          progressManager.updateTask(WUIPID, {progress})
+        }
+        console.error(`[WebUI Error]: ${str}`)
+
+        // for some reason this message is in stderr!
+        if (str.includes('Started server process')) {
+          console.log('Open WebUI is ready!')
+          resolve(process)
+        }
+      }
+    })
+
+    return webuiProcess
+  }
+
+  async ensureWebUIApiKey() {
+    let encryptedBuffer
+
+    try {
+      const user = await app.db.getUserByEmail()
+      encryptedBuffer = user?.encrypted_api_key
+    } catch (err) {
+      console.warn('No WebUI user, generating a new one...')
+    }
+
+    if (encryptedBuffer) {
+      try {
+        const apiKey = safeStorage.decryptString(encryptedBuffer)
+
+        // test key
+        await makeRequest(`${WEBUI_BASE_URL}/models`, 'GET', apiKey)
+
+        return apiKey // valid
+      } catch (err) {
+        console.warn('Stored API key invalid, regenerating...')
+      }
+    }
+
+    // create new key
+    // overwrite WEBUI_EMAIL, WEBUI_NAME, WEBUI_PASS from env
+    const env = {
+      WEBUI_EMAIL: 'nowhere@noemail.nodomain',
+      WEBUI_NAME: 'Admin',
+      WEBUI_PASS: generateSecurePassword(),
+      ...process.env
+    }
+    const email = env.WEBUI_EMAIL
+    const password = env.WEBUI_PASS
+    const name = env.WEBUI_NAME
+
+    await makeRequest(`${WEBUI_BASE_URL}/auths/signup`, 'POST', null, { email, password, name })
+
+    const loginData = await makeRequest(`${WEBUI_BASE_URL}/auths/signin`, 'POST', null, { email, password })
+    const jwt = loginData.token
+
+    const keyData = await makeRequest(`${WEBUI_BASE_URL}/auths/api_key`, 'POST', jwt)
+    const apiKey = keyData.api_key
+
+    const encryptedKey = safeStorage.encryptString(apiKey)
+    app.db.saveUser(email, password, encryptedKey)
+
+    return apiKey
+  }
+
+  async startOllama() {
     // download/start Ollama server
     const OLSPID = 'Setting Up Ollama Server'
     progressManager.startTask(OLSPID, 'Downloading server...')
@@ -69,10 +294,47 @@ class OllamaAPI {
     return await this.electronOllama.isRunning()
   }
 
+  async stopServers() {
+    await this.stopOpenWebUI()
+    await this.stopOllama()
+  }
+
   async stopOllama() {
     if (await this.ollamaIsRunning()) {
       await this.electronOllama.getServer()?.stop()
     }
+  }
+
+  async stopOpenWebUI() {
+    if (!this.webuiProcess) return
+
+    return new Promise((resolve) => {
+      let finished = false
+
+      const cleanup = () => {
+        if (!finished) {
+          finished = true
+          resolve()
+        }
+      }
+
+      this.webuiProcess.once('exit', (code) => {
+        console.log('WebUI exited with code', code)
+        cleanup()
+      })
+
+      // Try graceful shutdown
+      this.webuiProcess.kill('SIGTERM')
+
+      // Force kill if it hangs
+      setTimeout(() => {
+        if (!finished) {
+          console.warn('WebUI did not exit, force killing...')
+          this.webuiProcess.kill('SIGKILL')
+          cleanup()
+        }
+      }, 5000)
+    })
   }
 
   async listModels() {
@@ -178,4 +440,4 @@ class OllamaAPI {
   }
 }
 
-export default new OllamaAPI(app.getPath('userData'))
+export default new LLMInterface(app.getPath('userData'))

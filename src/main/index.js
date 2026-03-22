@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import ollamaApi from './ollama'
+import llmApi from './ollama'
 import progressManager from './progressManager'
 import fs from 'fs'
 import path from 'path'
@@ -33,14 +33,13 @@ function createWindow() {
         mainWindow.webContents.send('progress:update', tasks);
     });
 
-    // downloads and starts ElectionOllama server
-    await ollamaApi.startServer()
-
-    // download the summarizer because that at the least is needed for the app to function
-    await ollamaApi.downloadSummarizerModel()
-
-    console.log('ollama ready')
-    mainWindow.webContents.send('ollama-ready')
+    // downloads and starts ElectionOllama server and Open WebUI server
+    // also downloads the summarizer
+    // sends ollama-ready once ollama server has started
+    await llmApi.start(() => {
+      console.log('ollama ready')
+      mainWindow.webContents.send('ollama-ready')
+    })
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -77,7 +76,7 @@ app.whenReady().then(() => {
   })
 
   app.on('will-quit', async () => {
-    await ollamaApi.stopOllama()
+    await llmApi.stopServers()
   })
 
   // IPC test
@@ -108,14 +107,14 @@ ipcMain.handle('progress:delete-task', (_, taskId) => {
 })
 
 ipcMain.handle('get-models', () => {
-  return ollamaApi.models
+  return llmApi.models
 });
 
 ipcMain.handle('download-model', async (_, model) => {
-  if (!(await ollamaApi.ollamaIsRunning())) {
-    await ollamaApi.startServer()
+  if (!(await llmApi.ollamaIsRunning())) {
+    await llmApi.start()
   }
-  let success = await ollamaApi.downloadModel(model);
+  let success = await llmApi.downloadModel(model);
   mainWindow?.webContents.send('model-downloaded', model)
   return success
 })
@@ -206,7 +205,7 @@ ipcMain.handle('chat', async (_, { model, topicId, fileIds, question }) => {
     console.log('Files for topic:', files)
     const filePaths = files.filter(f => fileIds.includes(f.id)).map(f => f.file_path);
     console.log('Chat request:', { topicId, fileIds, question, filePaths })
-    const response = await ollamaApi.chat({
+    const response = await llmApi.chat({
       model,
       messages: [
         { role: 'system', content: `You are an assistant for the following files: ${filePaths.join(', ')}. Use only the information from these files to answer the question. If you don't know the answer, say you don't know.` },

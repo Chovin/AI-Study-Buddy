@@ -9,7 +9,7 @@
     window.api.onProgressUpdate((ts) => {
       console.log('update', ts)
       tasks = ts.map(([id, attrs]) => {
-        attrs.percent = parseInt(attrs.progress*100)
+        if (attrs.progress != null) attrs.percent = parseInt(attrs.progress*100);
 
         if (attrs.status != 'running' && !deleted[id]) {
           deleted[id] = true
@@ -31,13 +31,15 @@
     <div class="svelte">{task.msg}
       {#if task.error}
         <span>{task.error}</span>
-      {:else}
+      {:else if task.progress != null}
         <span>{task.percent}%</span>
       {/if}
     </div>
-    <div class="progress">
-      <LinearProgress progress={task.progress} closed={task.status !== 'running'}/>
-    </div>
+    {#if task.progress != null}
+      <div class="progress">
+        <LinearProgress progress={task.progress} closed={task.status !== 'running'}/>
+      </div>
+    {/if}
   {/each}
 </div>
 

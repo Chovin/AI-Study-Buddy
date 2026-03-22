@@ -25,7 +25,7 @@ class ProgressManager extends EventEmitter {
     let task = this.tasks.get(id);
     task.status = 'done';
     task.msg = msg;
-    task.progress = 1;
+    if (task.progress != null) task.progress = 1;
     this.emitUpdate();
     console.log(msg)
   }
