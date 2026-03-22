@@ -1,7 +1,7 @@
 import { ElectronOllama } from 'electron-ollama'
 import { app, safeStorage } from 'electron'
 import { Ollama } from 'ollama'
-import { runCommand, makeRequest, generateSecurePassword } from './helpers'
+import { runCommand, makeRequest, generateSecurePassword, sleep } from './helpers'
 import models from './models'
 import progressManager from './progressManager'
 import fs from 'fs'
@@ -131,7 +131,21 @@ class LLMInterface {
     progressManager.updateTask(WUIPID, {msg: "Starting Open WebUI Server..."})
     this.webuiProcess = await this.startOpenWebUIProcess()
     progressManager.updateTask(WUIPID, {msg: "Getting Open WebUI API Key..."})
-    this.webUIAPIKey = await this.ensureWebUIApiKey()
+    for (let i = 0; i<5; i++) {
+      try {
+        this.webUIAPIKey = await this.ensureWebUIApiKey()
+      } catch (error) {
+        if (error.message?.includes("You do not have permission")) {
+          console.log('Trying again. recieved error:', error)
+          await sleep(5000)
+          continue
+        }
+        throw error
+      }
+    }
+    if (!this.webUIAPIKey) {
+      throw new Error("Unable to get Open WebUI API Key")
+    }
     progressManager.finishTask(WUIPID, "Finished Starting Open WebUI")
   }
 
