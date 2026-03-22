@@ -205,8 +205,16 @@ class LLMInterface {
   async ensureWebUIApiKey() {
     let encryptedBuffer
 
+    // overwrite WEBUI_EMAIL, WEBUI_NAME, WEBUI_PASS from env
+    const env = {
+      WEBUI_EMAIL: 'nowhere@noemail.nodomain',
+      WEBUI_NAME: 'Admin',
+      WEBUI_PASS: generateSecurePassword(),
+      ...process.env
+    }
+
     try {
-      const user = await app.db.getUserByEmail()
+      const user = await app.db.getUserByEmail(env.WEBUI_EMAIL)
       encryptedBuffer = user?.encrypted_api_key
     } catch (err) {
       console.warn('No WebUI user, generating a new one...')
@@ -226,13 +234,6 @@ class LLMInterface {
     }
 
     // create new key
-    // overwrite WEBUI_EMAIL, WEBUI_NAME, WEBUI_PASS from env
-    const env = {
-      WEBUI_EMAIL: 'nowhere@noemail.nodomain',
-      WEBUI_NAME: 'Admin',
-      WEBUI_PASS: generateSecurePassword(),
-      ...process.env
-    }
     const email = env.WEBUI_EMAIL
     const password = env.WEBUI_PASS
     const name = env.WEBUI_NAME
