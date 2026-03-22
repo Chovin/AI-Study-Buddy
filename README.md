@@ -158,13 +158,16 @@ architecture-beta
     service renderer(internet)[Electron Renderer Process] in studybuddy
     service files(disk)[Uploaded Files in userData Folder] in studybuddy
 
+    junction extra in studybuddy
+
     db:L -- R:electron
     models:T -- B:ollama
     dbfolder:T -- B:db
     electron:L -- R:ollama
     electron:B -- T:webui
-    electron:T -- B:renderer
-    renderer:R -- L:files
+    electron:T -- B:extra
+    extra:R -- L:files
+    extra:L -- R:renderer
 ```
 
 ```mermaid
