@@ -67,14 +67,14 @@ export default {
         size: "5.2GB",
         context: 128
     },
+    // use this as the summarizer for chats
     'deepseek-r1:1.5b': {
         size: "1.1GB",
-        context: 128
+        context: 128,
+        summarizer: true
     },
-    // use this as the summarizer for chats
     'tinyllama:1.1b': {
         size: "638MB",
-        summarizer: true,
         context: 2
     },
 }
