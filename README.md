@@ -18,6 +18,9 @@
 $ npm run dev
 $ # or to test building
 $ npm run start
+$ # use this to delete databases for recreation. 
+$ # useful if db schema changes or can't login to Open WebUI
+$ npm run clear-databases
 ```
 
 This app is built with `electron-vite`. Vite acts as the build tool bundling the renderer up and provides hot reloading.
