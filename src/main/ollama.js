@@ -174,7 +174,7 @@ class LLMInterface {
           console.log('Open WebUI is ready!')
           setTimeout(() => {
             resolve(process)
-          }, 1000)
+          }, 5000)
         }
       },
       stderrCallback: (str, process, resolve) => {
@@ -194,7 +194,7 @@ class LLMInterface {
           console.log('Open WebUI is ready!')
           setTimeout(() => {
             resolve(process)
-          }, 1000)
+          }, 5000)
         }
       }
     })
