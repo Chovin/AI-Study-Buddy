@@ -173,7 +173,7 @@ architecture-beta
 ```mermaid
 flowchart LR
     %% Actor
-    User(User)
+    User(👤 User)
 
     %% System as a subgraph
     subgraph AI_Study_Buddy_App["AI Study Buddy App"]
