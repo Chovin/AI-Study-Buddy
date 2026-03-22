@@ -76,6 +76,7 @@ app.whenReady().then(() => {
   })
 
   app.on('will-quit', async () => {
+    console.log('== quitting ==')
     await llmApi.stopServers()
   })
 

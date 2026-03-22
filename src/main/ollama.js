@@ -6,6 +6,7 @@ import models from './models'
 import progressManager from './progressManager'
 import fs from 'fs'
 import path from 'path'
+import kill from 'tree-kill'
 
 const WEBUI_BASE_URL = 'http://localhost:8080/api/v1';
 const PYTHON_CMD = process.platform === 'win32' ? 'python' : 'python3';
@@ -295,7 +296,9 @@ class LLMInterface {
   }
 
   async stopServers() {
+    console.log('quitting openwebui')
     await this.stopOpenWebUI()
+    console.log('quitting ollama')
     await this.stopOllama()
   }
 
@@ -314,23 +317,46 @@ class LLMInterface {
       const cleanup = () => {
         if (!finished) {
           finished = true
+          this.webuiProcess = null
           resolve()
         }
       }
 
-      this.webuiProcess.once('exit', (code) => {
-        console.log('WebUI exited with code', code)
+      // Exit listener
+      this.webuiProcess.once('exit', (code, signal) => {
+        console.log('WebUI exited with code', code, 'signal', signal)
+        cleanup()
+      })
+
+      // Trying to catch close
+      this.webuiProcess.on('close', (code, signal) => {
+        console.log('WebUI closed with code', code, 'signal', signal)
         cleanup()
       })
 
       // Try graceful shutdown
-      this.webuiProcess.kill('SIGTERM')
+      // const sigTermSent = this.webuiProcess.kill('SIGTERM')
+      kill(this.webuiProcess.pid)
 
-      // Force kill if it hangs
+      // for some reason, webui doesn't send the exit event, so have to poll for it
+      // Poll for the process to exit
+      const pollExit = () => {
+        try {
+          process.kill(this.webuiProcess.pid, 0) // check if alive
+          setTimeout(pollExit, 200)
+        } catch {
+          // process no longer exists
+          cleanup()
+        }
+      }
+
+      pollExit()
+
+      // Force kill after 5s if still running
       setTimeout(() => {
-        if (!finished) {
+        if (!finished && !this.webuiProcess.killed) {
           console.warn('WebUI did not exit, force killing...')
-          this.webuiProcess.kill('SIGKILL')
+          kill(this.webuiProcess.pid, 'SIGKILL')
           cleanup()
         }
       }, 5000)
