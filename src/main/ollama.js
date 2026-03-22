@@ -172,7 +172,9 @@ class LLMInterface {
 
         if (str.includes('Started server process')) {
           console.log('Open WebUI is ready!')
-          resolve(process)
+          setTimeout(() => {
+            resolve(process)
+          }, 1000)
         }
       },
       stderrCallback: (str, process, resolve) => {
@@ -190,7 +192,9 @@ class LLMInterface {
         // for some reason this message is in stderr!
         if (str.includes('Started server process')) {
           console.log('Open WebUI is ready!')
-          resolve(process)
+          setTimeout(() => {
+            resolve(process)
+          }, 1000)
         }
       }
     })
