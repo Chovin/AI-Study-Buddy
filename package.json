@@ -22,6 +22,7 @@
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "electron-ollama": "^0.1.25",
+    "eventsource": "^4.1.0",
     "material-icons": "^1.13.14",
     "ollama": "^0.6.3",
     "sqlite3": "^5.1.7",

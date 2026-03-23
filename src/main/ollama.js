@@ -4,10 +4,12 @@ import { Ollama } from 'ollama'
 import { runCommand, makeRequest, generateSecurePassword, sleep } from './helpers'
 import models from './models'
 import progressManager from './progressManager'
+import AsyncQueue from './asyncQueue'
 import fs from 'fs'
 import path from 'path'
 import mime from 'mime-types'
 import kill from 'tree-kill'
+import { EventSource } from 'eventsource'
 
 const WEBUI_BASE_URL = 'http://localhost:8080/api/v1';
 const PYTHON_CMD = process.platform === 'win32' ? 'python' : 'python3';
@@ -36,6 +38,9 @@ class LLMInterface {
     this.selectedModel = this.summarizerModel
 
     this.downloadingModels = {}
+
+    this.fileProcessingQueue = new AsyncQueue()
+    this.currentFileProcessing = null
   }
 
   get models() {
@@ -56,9 +61,9 @@ class LLMInterface {
     ])
     
     await this.startWebUI()
+    this.running = true
 
     await this.registerPendingFiles()
-    this.running = true
   }
 
   async ensureVenv() {
@@ -169,12 +174,9 @@ class LLMInterface {
       ? path.join(VENV_PATH, 'Scripts', 'open-webui.exe')
       : path.join(VENV_PATH, 'bin', 'open-webui');
 
-    let lastProgress = null
-    // for some reason, open webui shows the download percentage in stderr
-    let lastErrProgress = null
-    const webuiProcess = await runCommand(scriptPath, ['serve'], {
-      env,
-      stdoutCallback: (str, process, resolve) => {
+    const stdioCallbackMaker = (error = false) => {
+      let lastProgress = null
+      return (str, process, resolve) => {
         // Parse progress from stdout lines
         // Example: "[  3%] ..." or "Downloading ... 45%"
         const matchProgress = str.match(/(\d{1,3})%/);
@@ -182,59 +184,44 @@ class LLMInterface {
         if (matchProgress) {
           progress = parseInt(matchProgress[1], 10) / 100;
         }
-        if (progress != lastProgress) {
+        const progressChanged = progress != lastProgress
+        if (progressChanged) {
           lastProgress = progress
-          progressManager.updateTask(WUIPID, {progress})
-        }
-        console.log(`[WebUI]: ${str}`)
-
-        if (str.includes('Started server process')) {
-          console.log('Open WebUI is ready!')
-          setTimeout(() => {
-            resolve(process)
-          }, 5000)
-        }
-
-        // for some reason, stdout and stderr are reversed
-        if (str.includes('ERROR') || str.includes('Error')) {
-          // ignore this error
-          if (str.includes('CERTIFICATE_VERIFY_FAILED') && str.includes('Cannot connect to host api.openai.com:443')) {
-            return
-          }
-          if (str.includes('The content provided is empty')) {
-            str = 'uploaded file content is empty'
-          }
-          let msg = `WebUI Error: ${str}`
-          if (str.includes("Error processing file")) {
-            msg = null
-          }
-          progressManager.trailingTask(WUIPID, {progress, msg, error: `WebUI Error: ${str}`})
-        }
-      },
-      stderrCallback: (str, process, resolve) => {
-        const matchProgress = str.match(/(\d{1,3})%/);
-        let progress = lastErrProgress
-        if (matchProgress) {
-          progress = parseInt(matchProgress[1], 10) / 100;
-        }
-        if (progress != lastErrProgress) {
-          lastErrProgress = progress
-          if (this.running) {
-            progressManager.trailingTask(WUIPID, {progress})
-          } else {
+          if (!this.running) {
             progressManager.updateTask(WUIPID, {progress})
           }
         }
-        console.error(`[WebUI Error]: ${str}`)
+        console.log(`[WebUI${error ? ' Error' : ''}]: ${str}`)
 
-        // for some reason this message is in stderr!
         if (str.includes('Started server process')) {
           console.log('Open WebUI is ready!')
           setTimeout(() => {
             resolve(process)
           }, 5000)
         }
+
+        // Only update if there is a current file
+        if (this.running && this.currentFileProcessing) {
+          const match = str.match(/Batches:\s*(\d+)%/);
+          if (match) {
+            if (this.currentFileProcessing.timeout) {
+              this.currentFileProcessing.refresh()
+            }
+            if (progressChanged) {
+              progress = parseInt(match[1], 10) / 100;
+              progressManager.updateTask(this.currentFileProcessing.taskId, { progress });
+            }
+          }
+        }
       }
+    }
+
+    const webuiProcess = await runCommand(scriptPath, ['serve'], {
+      env,
+      // for some reason, open webui shows the download percentage in stderr
+      // and errors in stdout
+      stdoutCallback: stdioCallbackMaker(),
+      stderrCallback: stdioCallbackMaker(true)
     })
 
     return webuiProcess
@@ -493,11 +480,15 @@ class LLMInterface {
     }
   }
 
-  async _uploadFile(apiKey, filePath, filename) {
+  async _uploadFile(apiKey, file) {
+    
     return new Promise((resolve, reject) => {
+      const url = new URL(`${WEBUI_BASE_URL}/files/`);  // Open WebUI file upload endpoint
+      url.searchParams.set('process_in_background', 'false');
+
       const request = net.request({
         method: 'POST',
-        url: `${WEBUI_BASE_URL}/files/` // Open WebUI file upload endpoint
+        url: url.toString()
       });
   
       const boundary = '----WebKitFormBoundary7MA4YWxkTrZu0gW';
@@ -507,12 +498,12 @@ class LLMInterface {
       // Construct multipart form data
       // don't use filename as on disk since we lose ext
       // and lose name context that the model could use
-      // const filename = path.basename(filePath);
-      const fileContent = fs.readFileSync(filePath);
+      // const file.file_name = path.basename(file.file_path);
+      const fileContent = fs.readFileSync(file.file_path);
       
-      const mimeType = mime.lookup(filename) || 'application/octet-stream'
+      const mimeType = mime.lookup(file.file_name) || 'application/octet-stream'
       let payload = `--${boundary}\r\n`;
-      payload += `Content-Disposition: form-data; name="file"; filename="${filename}"\r\n`;
+      payload += `Content-Disposition: form-data; name="file"; filename="${file.file_name}"\r\n`;
       payload += `Content-Type: ${mimeType}\r\n\r\n`;
   
       request.on('response', (response) => {
@@ -527,22 +518,140 @@ class LLMInterface {
       request.end();
     });
   }
-  
-  async registerFile(fileId, filePath, filename) {
-    progressManager.updateTask(WUIPID, {msg: `WebUI: reading file ${filename}`, progress: 0})
-    const file = await this._uploadFile(this.webUIAPIKey, filePath, filename);
-    console.log(file)
-    // TODO: maybe delete file after it's registered to save space
-    // since webui also saves a copy of the file
-    await app.db.updateFile(fileId, file.id || file.data?.id)
-    return file
-  }
 
   async registerPendingFiles() {
     let files = await app.db.getPendingFiles()
     for (let file of files) {
-      await this.registerFile(file.id, file.file_path, file.file_name)
+      try {
+        if (!file.canRetry()) continue
+        await file.markPending()
+        await this.registerFile(file)
+      } catch (err) {
+        console.log(`error registering ${file.file_name}: ${err}`)
+        // throw err
+        continue
+      }
     }
+  }
+
+  async registerFile(file) {
+    await this.enqueueRegisterFile(file)
+  }
+
+  // enqueue promise to ensure _registerFile is only executed once at a time
+  async enqueueRegisterFile(file) {
+    return this.fileProcessingQueue.enqueue(async () => {
+      const taskId = `Uploading file ${file.id}`
+      this.currentFileProcessing = { file, taskId, timeout: null, refresh: null };
+      try {
+        progressManager.startTask(taskId, `Reading file ${file.file_name}`)
+        const result = await this._registerFile(file);
+        progressManager.finishTask(taskId, `${file.file_name} registered`)
+        this.currentFileProcessing = null;
+        return result;
+      } catch (err) {
+        progressManager.failTask(taskId, `had troubles reading ${file.file_name}`, err)
+        this.currentFileProcessing = null;
+        throw err;
+      }
+    });
+  }
+
+  async _registerFile(file) {
+    const result = await this._uploadFile(this.webUIAPIKey, file)
+    console.log('file', result)
+
+    const webuiId = result.id || result.data?.id
+
+    if (!webuiId) {
+      throw new Error('No WebUI file ID returned')
+    }
+
+    // TODO: maybe delete file after it's registered to save space
+    // since webui also saves a copy of the file
+    await file.setWebUIID(webuiId)
+
+    await this.ensureFileRegistered()
+
+    await file.markReady()
+
+    return result
+  }
+
+  async ensureFileRegistered() {
+    let { file, taskId } = this.currentFileProcessing
+    
+
+    await new Promise((resolve, reject) => {
+      const url = `${WEBUI_BASE_URL}/files/${file.webui_id}/process/status?stream=true`
+      // https://www.npmjs.com/package/eventsource#user-content-setting-http-request-headers
+      // need to give it a custom fetch in order to add headers
+      const es = new EventSource(url, {
+        fetch: (input, init) =>
+          fetch(input, {
+            ...init,
+            headers: {
+              ...init.headers,
+              Authorization: `Bearer ${this.webUIAPIKey}`,
+            },
+          }),
+      })
+
+      let error_code = null
+
+      // Function to create/reset the timeout
+      const fp = this.currentFileProcessing
+      const resetTimeout = () => {
+        if (fp.timeout) clearTimeout(fp.timeout)
+        fp.timeout = setTimeout(async () => {
+          es.close()
+          if (error_code != null) {
+            await file.markErrored(`${error_code}`)
+          }
+          progressManager.failTask(taskId, `${file.file_name} stalled or timed out${error_code ? 'with error code ' + error_code : ''}`)
+          reject(new Error('File processing timed out'))
+        }, 30_000) // 30 seconds of inactivity
+      }
+      fp.refresh = resetTimeout
+
+      // Start initial timeout
+      resetTimeout()
+
+      es.onmessage = async (event) => {
+        const data = JSON.parse(event.data)
+        console.log('== data ==', data)
+
+        // Refresh the stall timeout whenever we get an update
+        resetTimeout()
+
+        // Update progress if available
+        if (data.progress != null) {
+          progressManager.updateTask(taskId, { progress: data.progress })
+        }
+
+        // Completion / failure
+        const completed = data.status === 'completed'
+        const failed = data.status === 'failed'
+        if (completed || failed) {
+          clearTimeout(fp.timeout)
+          es.close()
+          if (completed) {
+            resolve()
+          } else {
+            await file.markErrored(data.error)
+            progressManager.failTask(taskId, `${file.file_name} failed processing`, data.error)
+            reject(new Error(data.error || 'File processing failed'))
+          }
+        }
+      }
+
+      es.onerror = (err) => {
+        console.warn('SSE error', err)
+
+        error_code = err.code
+        // keep listening until completion or timeout
+      }
+    })
   }
 
   async promptLogin() {

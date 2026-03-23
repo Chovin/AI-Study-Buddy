@@ -172,19 +172,19 @@ ipcMain.handle('upload-file', async (_, { topicId, filePath }) => {
 
   console.log('Uploading file:', { topicId, filePath, originalFileName, topicDir })
   try {
-    const fileId = await db.addFile(topicId, originalFileName);
+    const file = await db.addFile(topicId, originalFileName);
 
     if (!fs.existsSync(topicDir)) {
       fs.mkdirSync(topicDir, { recursive: true });
     }
 
-    const destination = path.join(topicDir, `${fileId}`);
+    const destination = path.join(topicDir, `${file.id}`);
     fs.copyFileSync(filePath, destination);
 
-    await db.updateFilePath(fileId, destination);
+    await file.updatePath(destination)
 
     if (llmApi.running) {
-      await llmApi.registerFile(fileId, destination, originalFileName)
+      await llmApi.registerFile(file)
     }
     console.log('File upload complete: ', destination)
     return 'File uploaded successfully';
@@ -196,7 +196,7 @@ ipcMain.handle('upload-file', async (_, { topicId, filePath }) => {
 ipcMain.handle('delete-file', async (_, fileId) => {
   console.log('Deleting file:', fileId)
   try {
-    await db.deleteFile(fileId);
+    await (await db.getFile(fileId)).delete()
     return 'File deleted successfully';
   } catch (err) {
     throw new Error(err.message);
