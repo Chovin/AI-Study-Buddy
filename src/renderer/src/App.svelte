@@ -52,6 +52,15 @@
 
   const ipcHandle = () => window.electron.ipcRenderer.send('ping')
 
+  const handleOnProgressUpdate = (id, attrs) => {
+    if (String(attrs.error).includes('soffice command was not found')) {
+      if (!attrs.msg.includes('LibreOffice')) {
+        attrs.msg += '. These types of files require LibreOffice.'
+      }
+      attrs.delay = 30_000
+    }
+  }
+
   const handleChatKeyDown = async (event) => {
     if (event.key === 'Enter') {
       await sendChat()
@@ -72,7 +81,7 @@
 </script>
 
 <div class="creator">Powered by electron-vite</div>
-<ProgressNotifications/>
+<ProgressNotifications onProgressUpdate={handleOnProgressUpdate}/>
 <Textfield bind:value={question} onkeydown={handleChatKeyDown}></Textfield>
 <Button onclick={sendChat}>Send</Button>
 <div>
