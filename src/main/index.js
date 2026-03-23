@@ -11,6 +11,23 @@ import Database from './database'
 
 let db;
 let mainWindow;
+let starting = false
+
+async function startThings() {
+  // downloads and starts ElectionOllama server and Open WebUI server
+  // also downloads the summarizer
+  // sends ollama-ready once ollama server has started
+  if (!starting && !llmApi.running) {
+    starting = true
+    await llmApi.start(() => {
+      console.log('ollama ready')
+      mainWindow.webContents.send('ollama-ready')
+    })
+    starting = false
+  }
+
+
+}
 
 function createWindow() {
   // Create the browser window.
@@ -33,13 +50,7 @@ function createWindow() {
         mainWindow.webContents.send('progress:update', tasks);
     });
 
-    // downloads and starts ElectionOllama server and Open WebUI server
-    // also downloads the summarizer
-    // sends ollama-ready once ollama server has started
-    await llmApi.start(() => {
-      console.log('ollama ready')
-      mainWindow.webContents.send('ollama-ready')
-    })
+    await startThings()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -138,7 +149,7 @@ ipcMain.handle('get-models', () => {
 
 ipcMain.handle('download-model', async (_, model) => {
   if (!(await llmApi.ollamaIsRunning())) {
-    await llmApi.start()
+    await startThings()
   }
   let success = await llmApi.downloadModel(model);
   mainWindow?.webContents.send('model-downloaded', model)
@@ -171,6 +182,10 @@ ipcMain.handle('upload-file', async (_, { topicId, filePath }) => {
     fs.copyFileSync(filePath, destination);
 
     await db.updateFilePath(fileId, destination);
+
+    if (llmApi.running) {
+      await llmApi.registerFile(fileId, destination, originalFileName)
+    }
     console.log('File upload complete: ', destination)
     return 'File uploaded successfully';
   } catch (err) {

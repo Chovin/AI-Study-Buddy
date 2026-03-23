@@ -32,7 +32,7 @@ class Database {
         topic_id INTEGER NOT NULL,
         file_name TEXT NOT NULL,
         file_path TEXT NOT NULL,
-        webui_id TEXT NOT NULL,
+        webui_id TEXT,
         FOREIGN KEY (topic_id) REFERENCES topics (id)
       )
     `);
@@ -78,6 +78,31 @@ class Database {
     `;
     const result = await this.runAsync(query, [topicId, originalFileName, '']);
     return result.lastID; // Return the file_id
+  }
+
+  async updateFile(fileId, webui_id) {
+    const query = `
+      UPDATE files
+      SET webui_id = ?
+      WHERE id = ?
+    `;
+    const result = await this.runAsync(query, [webui_id, fileId])
+    if (result.changes === 0) {
+      // optional: verify existence
+      const rows = await this.allAsync(
+        `SELECT id FROM files WHERE id = ?`,
+        [fileId]
+      )
+      if (rows.length === 0) {
+        throw new Error(`File with id ${fileId} not found`)
+      }
+    }
+  }
+
+  async getPendingFiles() {
+    return await this.allAsync(`
+      SELECT * FROM files WHERE webui_id IS NULL
+    `);
   }
 
   async deleteFile(fileId) {

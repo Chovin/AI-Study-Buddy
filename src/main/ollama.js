@@ -1,11 +1,12 @@
 import { ElectronOllama } from 'electron-ollama'
-import { app, safeStorage } from 'electron'
+import { app, safeStorage, net } from 'electron'
 import { Ollama } from 'ollama'
 import { runCommand, makeRequest, generateSecurePassword, sleep } from './helpers'
 import models from './models'
 import progressManager from './progressManager'
 import fs from 'fs'
 import path from 'path'
+import mime from 'mime-types'
 import kill from 'tree-kill'
 
 const WEBUI_BASE_URL = 'http://localhost:8080/api/v1';
@@ -55,6 +56,9 @@ class LLMInterface {
     ])
     
     await this.startWebUI()
+
+    await this.registerPendingFiles()
+    this.running = true
   }
 
   async ensureVenv() {
@@ -190,6 +194,22 @@ class LLMInterface {
             resolve(process)
           }, 5000)
         }
+
+        // for some reason, stdout and stderr are reversed
+        if (str.includes('ERROR') || str.includes('Error')) {
+          // ignore this error
+          if (str.includes('CERTIFICATE_VERIFY_FAILED') && str.includes('Cannot connect to host api.openai.com:443')) {
+            return
+          }
+          if (str.includes('The content provided is empty')) {
+            str = 'uploaded file content is empty'
+          }
+          let msg = `WebUI Error: ${str}`
+          if (str.includes("Error processing file")) {
+            msg = null
+          }
+          progressManager.trailingTask(WUIPID, {progress, msg, error: `WebUI Error: ${str}`})
+        }
       },
       stderrCallback: (str, process, resolve) => {
         const matchProgress = str.match(/(\d{1,3})%/);
@@ -199,7 +219,11 @@ class LLMInterface {
         }
         if (progress != lastErrProgress) {
           lastErrProgress = progress
-          progressManager.updateTask(WUIPID, {progress})
+          if (this.running) {
+            progressManager.trailingTask(WUIPID, {progress})
+          } else {
+            progressManager.updateTask(WUIPID, {progress})
+          }
         }
         console.error(`[WebUI Error]: ${str}`)
 
@@ -319,6 +343,7 @@ class LLMInterface {
     await this.stopOpenWebUI()
     console.log('quitting ollama')
     await this.stopOllama()
+    this.running = false
   }
 
   async stopOllama() {
@@ -465,6 +490,58 @@ class LLMInterface {
       this.selectedModel = model
     } else {
       throw new Error(`Model ${model} not installed`)
+    }
+  }
+
+  async _uploadFile(apiKey, filePath, filename) {
+    return new Promise((resolve, reject) => {
+      const request = net.request({
+        method: 'POST',
+        url: `${WEBUI_BASE_URL}/files/` // Open WebUI file upload endpoint
+      });
+  
+      const boundary = '----WebKitFormBoundary7MA4YWxkTrZu0gW';
+      request.setHeader('Authorization', `Bearer ${apiKey}`);
+      request.setHeader('Content-Type', `multipart/form-data; boundary=${boundary}`);
+  
+      // Construct multipart form data
+      // don't use filename as on disk since we lose ext
+      // and lose name context that the model could use
+      // const filename = path.basename(filePath);
+      const fileContent = fs.readFileSync(filePath);
+      
+      const mimeType = mime.lookup(filename) || 'application/octet-stream'
+      let payload = `--${boundary}\r\n`;
+      payload += `Content-Disposition: form-data; name="file"; filename="${filename}"\r\n`;
+      payload += `Content-Type: ${mimeType}\r\n\r\n`;
+  
+      request.on('response', (response) => {
+        let data = '';
+        response.on('data', (chunk) => { data += chunk; });
+        response.on('end', () => resolve(JSON.parse(data)));
+      });
+  
+      request.write(payload);
+      request.write(fileContent);
+      request.write(`\r\n--${boundary}--\r\n`);
+      request.end();
+    });
+  }
+  
+  async registerFile(fileId, filePath, filename) {
+    progressManager.updateTask(WUIPID, {msg: `WebUI: reading file ${filename}`, progress: 0})
+    const file = await this._uploadFile(this.webUIAPIKey, filePath, filename);
+    console.log(file)
+    // TODO: maybe delete file after it's registered to save space
+    // since webui also saves a copy of the file
+    await app.db.updateFile(fileId, file.id || file.data?.id)
+    return file
+  }
+
+  async registerPendingFiles() {
+    let files = await app.db.getPendingFiles()
+    for (let file of files) {
+      await this.registerFile(file.id, file.file_path, file.file_name)
     }
   }
 
