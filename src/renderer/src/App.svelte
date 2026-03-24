@@ -8,6 +8,7 @@
   import Button from '@smui/button';
   import IconButton from '@smui/icon-button';
   import Textfield from '@smui/textfield';
+  import CircularProgress from '@smui/circular-progress';
   import {onMount} from 'svelte'
   import 'svelte-material-ui/themes/svelte.css'
   import 'material-icons/iconfont/material-icons.css'
@@ -21,6 +22,8 @@
 
   let responseString = $state("");
   let question = $state("");
+  let quiz = $state([]);
+  let generating = $state(false)
 
   $effect(async () => {
     if (selectedTopic) {
@@ -71,13 +74,29 @@
     console.log(question)
     if (!selectedTopic || !question.trim()) return
     try {
-      responseString = await window.electron.ipcRenderer.invoke('chat', { model: selectedModel, topicId: selectedTopic.id, fileIds: files.map(f => f.id), question })
+      responseString = await window.api.chat(selectedModel, selectedTopic.id, files.map(f => f.id), question)
     } catch (error) {
       responseString = error.message
       throw error
     }
     console.log(responseString);
   }
+
+  const generateQuiz = async () => {
+    if (generating) return
+    generating = true
+    if (!selectedTopic) throw new Error('No topic selected');
+    try {
+      quiz = await window.api.generateQuiz(selectedModel, selectedTopic.id, files.map(f => f.id), 10, 'hard')
+    } catch (error) {
+      responseString = error.message
+      throw error
+    } finally {
+      generating = false
+    }
+  }
+
+
 </script>
 
 <div class="creator">Powered by electron-vite</div>
@@ -90,6 +109,29 @@
 {#if ollamaReady}
   <ModelChooser bind:models bind:selectedModel/>
 {/if}
+<Button onclick={generateQuiz}>Generate Quiz</Button>
+<CircularProgress indeterminate style="height: 32px; width: 32px;" closed={!generating}/>
+{#each quiz as q , qi (q.question) }
+  <h3>{q.question}</h3>
+  <form>
+    {#each q.choices as c, i (c) }
+      <div class={{
+        answer: q.answered && q.answer == i,
+        guessed: q.answered && q.guessed == i
+      }} 
+      on:click={() => {
+        q.guessed = i; 
+        q.answered = true
+      }}>
+        <input type="radio" 
+          id={`${qi}_${i}`} 
+          value={i} name={qi} 
+        />
+        <label for={`${qi}_${i}`}>{c}</label>
+      </div>
+    {/each}
+  </form>
+{/each}
 <p class="tip">Please try pressing <code>F12</code> to open the devTool</p>
 <div class="actions">
   <div class="action">
@@ -120,5 +162,14 @@
 <style>
   .model-selector {
     margin: 20px 0;
+  }
+  .answer {
+    background-color: rgb(125, 222, 125);
+  }
+  .guessed {
+    background-color: rgb(249, 112, 112);
+  }
+  .answer.guessed {
+    background-color: rgb(125, 222, 125);
   }
 </style>

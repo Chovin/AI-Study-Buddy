@@ -239,19 +239,19 @@ ipcMain.handle('delete-topic', async (_, topicId) => {
   }
 });
 
-ipcMain.handle('chat', async (_, { model, topicId, fileIds, question }) => {
+ipcMain.handle('chat', async (_, { model, topicId, fileIds, prompt }) => {
   try {
-    console.log('Received chat request:', { topicId, fileIds, question })
+    console.log('Received chat request:', { topicId, fileIds, prompt })
     const files = await db.getFilesByTopic(topicId);
     console.log('Files for topic:', files)
     const fileObjs = files.filter(f => fileIds.includes(f.id));
-    console.log('Chat request:', { topicId, fileIds, question, fileObjs })
-    const response = await llmApi.chatWithWebUI({
+    console.log('Chat request:', { topicId, fileIds, prompt, fileObjs })
+    const response = await llmApi.chatWithFileContext({
       model,
       files: fileObjs,
       messages: [
         { role: 'system', content: `You are a helpful assistant and study buddy with the purpose of helping the user study by answering questions about the provided context from uploaded documents.` },
-        { role: 'user', content: question }
+        { role: 'user', content: prompt }
       ]
     })
     console.log(response);
@@ -263,3 +263,92 @@ ipcMain.handle('chat', async (_, { model, topicId, fileIds, question }) => {
     throw new Error(err.message);
   }
 });
+
+async function generateQuiz(model, topicId, fileIds, numberOfQuestions, difficulty) {
+  try {
+    const files = (await db.getFilesByTopic(topicId)).filter(f => fileIds.includes(f.id))
+    let response = await llmApi.chatWithFileContext({
+      model,
+      files,
+      messages: [
+        { role: 'system', content: `
+You are a study assistant that generates quizzes from provided document context.
+
+Instructions:
+- Generate high-quality multiple-choice questions based ONLY on the provided context.
+- Each question must test understanding, not trivial recall.
+- Each question must have exactly 4 choices.
+- Only one correct answer.
+- The "answer" must be the index (0–3).
+- Don't make repeat any of the questions.
+- Ensure the correctness of the answer and make sure the incorrect answers are actually incorrect.
+- Ensure the question content is actually discussed in the provided context.
+
+Output rules:
+- Return ONLY valid JSON.
+- No explanations, no markdown, no extra text.
+- Ensure JSON is strictly valid and parsable. Do not include trailing commas after the last question and after the last choices. Escape double quotes, backslashes, and newlines
+- Don't use any markdown syntax.
+
+Format:
+[
+  {
+    "question": "<question text>",
+    "choices": [
+      "<choice 1>", 
+      "<choice 2>", 
+      "<choice 3>", 
+      "<choice 4>"
+    ],
+    "answer": 1
+  },
+  {
+    "question": "<question2 text>",
+    "choices": [
+      "<choice 1>", 
+      "<choice 2>", 
+      "<choice 3>", 
+      "<choice 4>"
+    ],
+    "answer": 0
+  }
+]
+        ` },
+        { role: 'user', content: `generate a quiz with ${numberOfQuestions} ${difficulty}-difficulty questions`}
+      ]
+    })
+    console.log(response)
+    response = response.trim()
+    if (response.startsWith('```json')) {
+      response = response.substring(7)
+    }
+    if (response.endsWith('```')) {
+      response = response.substring(0, response.length-3)
+    }
+    response = response.trim()
+    console.log('removed ticks', response)
+    return JSON.parse(response)
+  } catch (err) {
+    if (err.error == 'unauthorized' || err.status_code == 401) {
+      throw new Error("Cloud models require signing into Ollama")
+    }
+    throw new Error(err.message);
+  }
+}
+
+ipcMain.handle('generate-quiz', async (_, { model, topicId, fileIds, numberOfQuestions, difficulty }) => {
+  while (true) {
+    try {
+      const quiz = await generateQuiz(model, topicId, fileIds, numberOfQuestions, difficulty)
+      let qs = {}
+      quiz.forEach(q => {
+        if (qs[q.question]) throw new Error('Duplicate question')
+        qs[q.question] = true
+      });
+      return quiz
+    } catch (error) {
+      console.log('Error generating quiz. Trying again. ', error)
+      continue
+    }
+  }
+})

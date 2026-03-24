@@ -52,6 +52,12 @@ const api = {
   },
   downloadModel: async (modelName) => {
     return await electronAPI.ipcRenderer.invoke('download-model', modelName)
+  },
+  chat: async (model, topicId, fileIds, prompt) => {
+    return await electronAPI.ipcRenderer.invoke('chat', { model, topicId, fileIds, prompt })
+  },
+  generateQuiz: async (model, topicId, fileIds, numberOfQuestions, difficulty) => {
+    return await electronAPI.ipcRenderer.invoke('generate-quiz', { model, topicId, fileIds, numberOfQuestions, difficulty })
   }
 }
 

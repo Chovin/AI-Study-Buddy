@@ -658,7 +658,7 @@ class LLMInterface {
     await runCommand("ollama", ["signin"])
   }
 
-  async chatWithWebUI({files = [], messages = [], model = null}) {
+  async chatWithFileContext({files = [], messages = [], model = null}) {
     if (!this.running) throw new Error("LLM not loaded yet")
 
     const url = `${WEBUI_BASE_URL}/chat/completions`
