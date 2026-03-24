@@ -8,7 +8,6 @@
   onMount(() => {
     let deleted = {}
     window.api.onProgressUpdate((ts) => {
-      console.log('update', ts)
       tasks = ts.map(([id, {...attrs}]) => {
         if (attrs.progress != null) attrs.percent = parseInt(attrs.progress*100);
         
@@ -24,7 +23,6 @@
 
         return {id, ...attrs}
       })
-      console.log('tasks', tasks)
     })
   })
 </script>

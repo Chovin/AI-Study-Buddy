@@ -83,7 +83,6 @@ class ProgressManager extends EventEmitter {
 
   emitUpdate() {
     let arr = Array.from(this.tasks.entries())
-    console.info('emitting update', arr)
     this.emit('update', arr);
   }
 }
