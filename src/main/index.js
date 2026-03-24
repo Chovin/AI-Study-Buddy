@@ -244,17 +244,18 @@ ipcMain.handle('chat', async (_, { model, topicId, fileIds, question }) => {
     console.log('Received chat request:', { topicId, fileIds, question })
     const files = await db.getFilesByTopic(topicId);
     console.log('Files for topic:', files)
-    const filePaths = files.filter(f => fileIds.includes(f.id)).map(f => f.file_path);
-    console.log('Chat request:', { topicId, fileIds, question, filePaths })
-    const response = await llmApi.chat({
+    const fileObjs = files.filter(f => fileIds.includes(f.id));
+    console.log('Chat request:', { topicId, fileIds, question, fileObjs })
+    const response = await llmApi.chatWithWebUI({
       model,
+      files: fileObjs,
       messages: [
-        { role: 'system', content: `You are an assistant for the following files: ${filePaths.join(', ')}. Use only the information from these files to answer the question. If you don't know the answer, say you don't know.` },
+        { role: 'system', content: `You are a helpful assistant and study buddy with the purpose of helping the user study by answering questions about the provided context from uploaded documents.` },
         { role: 'user', content: question }
       ]
     })
     console.log(response);
-    return response.message.content;
+    return response;
   } catch (err) {
     if (err.error == 'unauthorized' || err.status_code == 401) {
       throw new Error("Cloud models require signing into Ollama")

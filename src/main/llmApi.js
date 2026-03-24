@@ -658,6 +658,47 @@ class LLMInterface {
     await runCommand("ollama", ["signin"])
   }
 
+  async chatWithWebUI({files = [], messages = [], model = null}) {
+    if (!this.running) throw new Error("LLM not loaded yet")
+
+    const url = `${WEBUI_BASE_URL}/chat/completions`
+    model = model || this.selectModel
+
+    files = files.map(f => {
+      return { type: 'file', id: f.webui_id }
+    })
+
+    const payload = { model, messages, files, stream: false };
+    
+    console.log('sending to webui', payload)
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.webUIAPIKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`WebUI chat failed: ${text}`);
+    }
+
+    const data = await response.json();
+    let assistantReply =
+      data?.choices?.[0]?.message?.content ||
+      data?.response ||
+      data?.message ||
+      '';
+
+    console.log(response)
+    console.log(data)
+    // remove this later
+    if (data == null) {assistantReply = "The LLM didn't return anything"}
+    return assistantReply;
+  }
+
   async chat(args) {
     if(!args.model) args.model = this.selectedModel
     try {
