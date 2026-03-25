@@ -94,7 +94,12 @@ class LLMInterface {
 
   async installOpenWebUI() {
     progressManager.startTask(WUIPID, 'Downloading Open WebUI...', {progress: null})
-    await this.ensureVenv()
+    try {
+      await this.ensureVenv()
+    } catch (error) {
+      progressManager.failTask(WUIPID, null, error)
+      return
+    }
 
     if (await this.isWebUIInstalled()) {
       console.log(`Open WebUI installed`)
