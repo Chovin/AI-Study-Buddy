@@ -326,13 +326,26 @@ Format:
       response = response.substring(0, response.length-3)
     }
     response = response.trim()
-    console.log('removed ticks', response)
-    return JSON.parse(response)
+    // replace <choice>/<p>/<context> tags
+    // should be ok to remove <p> unless it's a html class :P
+    if (response.match(/<(choice|p|context) ?\d*\/?>/)) console.log(response)
+    response = response.replaceAll(/<\/?(choice|p) ?\d*\/?>/g, "")
+    response = response.replaceAll(/"\[\d+\] ?/g, '"')
+    // don't just remove these intances because sometimes the llm
+    // references the context files as [1], etc
+    if (response.match(/\[\d+\]/)) {
+      throw new Error("Incorrectly formatted quiz")
+    }
+    const quiz = JSON.parse(response)
+    if (quiz.some(q => !q.question.trim()) || quiz.some(q => q.choices.some(v => !v.trim()))) {
+      throw new Error("Empty question or answers")
+    }
+    return quiz
   } catch (err) {
     if (err.error == 'unauthorized' || err.status_code == 401) {
       throw new Error("Cloud models require signing into Ollama")
     }
-    throw new Error(err.message);
+    throw err;
   }
 }
 
@@ -357,9 +370,9 @@ ipcMain.handle('generate-quiz', async (_, { model, topicId, fileIds, numberOfQue
       console.log('Error generating quiz. Trying again. ', error)
       updateTask({msg: `Error generating quiz. Trying again. ${error}`, progress: 0})
       tries += 1
-      if (tries >= 10) {
+      if (tries >= 5) {
         failTask(`Failed too many times to generate a quiz. Something is probably wrong.`, error)
-        throw new Error(`Failed too many times to generate a quiz. Something is probably wrong. ${error}`)
+        throw new Error(`Failed too many times to generate a quiz. Something is probably wrong. You may want to try a different model. ${error}`)
       }
       continue
     }
