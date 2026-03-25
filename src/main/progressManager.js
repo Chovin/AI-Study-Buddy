@@ -38,6 +38,41 @@ class ProgressManager extends EventEmitter {
     this.timers.set(id, timer);
   }
 
+  startFakeProgressTask(id, msg = null, speed=.05, data) {
+    let fakeProgress = 0
+    let interval;
+    let makeFakeProgress = () => {
+      interval = setInterval(() => {
+        fakeProgress = fakeProgress + (1 - fakeProgress) * speed
+        this.updateTask(id, {progress: fakeProgress})
+      }, 500)
+    }
+    
+    const finishTask = (msg = null) => {
+      clearInterval(interval)
+      this.finishTask(id, msg)
+    }
+
+    const failTask = (msg = null, error) => {
+      clearInterval(interval)
+      this.failTask(id, msg, error)
+    }
+
+    const updateTask = (update) => {
+      clearInterval(interval)
+      if (update.progress != null) fakeProgress = update.progress
+      this.updateTask(id, {...update})
+      setTimeout(() => {
+        makeFakeProgress()
+      }, 5000)
+    }
+
+    this.startTask(id, msg, data)
+    makeFakeProgress()
+
+    return {updateTask, finishTask, failTask}
+  }
+
   startTask(id, msg = null, data) {
     msg = msg || 'Starting ' + id
     this.tasks.set(id, { progress: 0, status: 'running', msg, ...data });

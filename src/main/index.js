@@ -336,8 +336,13 @@ Format:
   }
 }
 
+let quizNumber = 1
 ipcMain.handle('generate-quiz', async (_, { model, topicId, fileIds, numberOfQuestions, difficulty }) => {
   if (starting || !llmApi.running) throw new Error("Ollama and/or Open WebUI aren't running yet")
+  const GQPID = `Generating Quiz ${quizNumber}`
+  quizNumber += 1
+  let tries = 0
+  const {updateTask, finishTask, failTask} = progressManager.startFakeProgressTask(GQPID)
   while (true) {
     try {
       const quiz = await generateQuiz(model, topicId, fileIds, numberOfQuestions, difficulty)
@@ -346,9 +351,16 @@ ipcMain.handle('generate-quiz', async (_, { model, topicId, fileIds, numberOfQue
         if (qs[q.question]) throw new Error('Duplicate question')
         qs[q.question] = true
       });
+      finishTask()
       return quiz
     } catch (error) {
       console.log('Error generating quiz. Trying again. ', error)
+      updateTask({msg: `Error generating quiz. Trying again. ${error}`, progress: 0})
+      tries += 1
+      if (tries >= 10) {
+        failTask(`Failed too many times to generate a quiz. Something is probably wrong.`, error)
+        throw new Error(`Failed too many times to generate a quiz. Something is probably wrong. ${error}`)
+      }
       continue
     }
   }
