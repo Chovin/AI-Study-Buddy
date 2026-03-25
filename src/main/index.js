@@ -337,6 +337,7 @@ Format:
 }
 
 ipcMain.handle('generate-quiz', async (_, { model, topicId, fileIds, numberOfQuestions, difficulty }) => {
+  if (starting || !llmApi.running) throw new Error("Ollama and/or Open WebUI aren't running yet")
   while (true) {
     try {
       const quiz = await generateQuiz(model, topicId, fileIds, numberOfQuestions, difficulty)

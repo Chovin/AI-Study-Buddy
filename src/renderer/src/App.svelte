@@ -90,6 +90,9 @@
       quiz = await window.api.generateQuiz(selectedModel, selectedTopic.id, files.map(f => f.id), 10, 'hard')
     } catch (error) {
       responseString = error.message
+      setTimeout(() => {
+        responseString = ""
+      }, 10_000)
       throw error
     } finally {
       generating = false
