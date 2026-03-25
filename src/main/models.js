@@ -59,20 +59,23 @@ export default {
         size: "2.0GB",
         context: 128
     },
+    // use this as the summarizer for chats
     'llama3.2:1b': {
         size: "1.3GB",
-        context: 128
+        context: 128,
+        summarizer: true
     },
     'deepseek-r1:8b': {
         size: "5.2GB",
         context: 128
     },
-    // use this as the summarizer for chats
-    'deepseek-r1:1.5b': {
-        size: "1.1GB",
-        context: 128,
-        summarizer: true
-    },
+    // turns out this deepseek kind of sucks
+    // // use this as the summarizer for chats
+    // 'deepseek-r1:1.5b': {
+    //     size: "1.1GB",
+    //     context: 128,
+    //     summarizer: true
+    // },
     'tinyllama:1.1b': {
         size: "638MB",
         context: 2
