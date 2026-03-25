@@ -9,7 +9,7 @@
 ### Install
 
 1. Install [Node.js](https://nodejs.org/)
-2. Install [Python](https://www.python.org/)
+2. Install [Python 3.11 or 3.12](https://www.python.org/downloads/latest/python3.12/)
 3. In the project directory, run `npm install`
 
 ### Development
