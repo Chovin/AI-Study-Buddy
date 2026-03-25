@@ -69,9 +69,19 @@ class LLMInterface {
   async ensureVenv() {
     try {
       // check Python version first
-      await runCommand(PYTHON_CMD, ['--version'])
-    } catch {
-      throw new Error('Python 3 not found. Please install Python 3.11+ first.')
+      await runCommand(PYTHON_CMD, ['--version'], {
+        stdoutCallback: (data) => {
+          console.log('in python cmd', data, !data.match(/Python 3.1[12]/))
+          if (!data.match(/Python 3.1[12]/)) {
+            throw new Error('Open WebUI requires Python 3.11 or 3.12')
+          }
+        }
+      })
+    } catch (error) {
+      if (error.message?.includes('3.11')) {
+        throw error
+      }
+      throw new Error('Python 3 not found. Please install Python 3.11/3.12 first.')
     }
 
     if (!fs.existsSync(VENV_PATH)) {
@@ -134,7 +144,7 @@ class LLMInterface {
       console.log('Installation successful!', output)
     } catch (error) {
       console.error('Installation failed:', error)
-      progressManager.failTask(WUIPID)
+      progressManager.failTask(WUIPID, null, error)
       throw error
     }
     

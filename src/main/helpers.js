@@ -68,7 +68,12 @@ export async function runCommand(cmd, args, options={}) {
 
       if (options.stdoutCallback) {
         for (const line of lines) {
-          options.stdoutCallback(line, process, resolve, reject)
+          try {
+            options.stdoutCallback(line, process, resolve, reject)
+          } catch (error) {
+            process.kill()
+            reject(new Error(`${error}\n${errorOutput}`))
+          }
         }
       }
     });
@@ -84,7 +89,12 @@ export async function runCommand(cmd, args, options={}) {
 
       if (options.stderrCallback) {
         for (let line of lines) {
-          options.stderrCallback(line, process, resolve, reject)
+          try {
+            options.stderrCallback(line, process, resolve, reject)
+          } catch (error) {
+            process.kill()
+            reject(new Error(`${error}\n${errorOutput}`))
+          }
         }
       }
     });
