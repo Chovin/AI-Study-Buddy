@@ -102,16 +102,29 @@
 
 </script>
 
-<div class="creator">Powered by electron-vite</div>
-<ProgressNotifications onProgressUpdate={handleOnProgressUpdate}/>
+<div class="top-nav">
+  <div class="nav-left">
+    <div class="model-box">
+    <ModelChooser
+    bind:models
+    bind:selectedModel
+    disabled={!ollamaReady}
+    />
+    </div>
+  </div>
+
+  <div class="nav-right">
+    <ProgressNotifications onProgressUpdate={handleOnProgressUpdate}/>
+  </div>
+</div>
+
 <Textfield bind:value={question} onkeydown={handleChatKeyDown}></Textfield>
 <Button onclick={sendChat}>Send</Button>
+
 <div>
   <p>{responseString}</p>
 </div>
-{#if ollamaReady}
-  <ModelChooser bind:models bind:selectedModel/>
-{/if}
+
 <Button onclick={generateQuiz}>Generate Quiz</Button>
 <CircularProgress indeterminate style="height: 32px; width: 32px;" closed={!generating}/>
 {#each quiz as q , qi (q.question) }
@@ -160,7 +173,7 @@
   </List>
 {/if}
 
-<Versions />
+
 
 <style>
   .model-selector {
@@ -175,4 +188,42 @@
   .answer.guessed {
     background-color: rgb(125, 222, 125);
   }
+ .top-nav {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 16px;
+  border-bottom: 1px solid #ddd;
+  background: white;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-sizing: border-box;
+  gap: 16px;
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.nav-right {
+  display: flex;
+  justify-content: flex-end;
+  flex: 1 1 auto;
+  text-align: right;
+}
+
+.model-box {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #ccc;
+  background: #f5f5f5;
+}
+
+.model-box :global(*) {
+  margin: 0;
+}
 </style>

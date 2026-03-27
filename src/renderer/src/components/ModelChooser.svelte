@@ -3,45 +3,47 @@
   import Button from '@smui/button';
   import { untrack } from "svelte";
 
-  // for some reason models needs to be bindable in order for the parent to update it in here
-  let { models = $bindable({}), selectedModel = $bindable('') } = $props();
+  let {
+    models = $bindable({}),
+    selectedModel = $bindable(''),
+    disabled = false
+  } = $props();
 
   let modelToDownload = $state('');
 
-  // alphabetically sorted model list
   let modelList = $derived.by(() => {
     let keys = Object.keys(models);
-    // actually makes more sense to keep them sorted like the ollama app
-    // keys.sort();
-    return keys
-  })
+    return keys;
+  });
 
   $effect(() => {
-    // handle parent changing selectedModel
-    let mtd = untrack(() => modelToDownload)
-    let ms = untrack(() => models)
-    
+    let mtd = untrack(() => modelToDownload);
+    let ms = untrack(() => models);
+
     if (selectedModel != mtd && ms[selectedModel]?.installed) {
-      modelToDownload = selectedModel
+      modelToDownload = selectedModel;
     }
-  })
+  });
 
   function handleModelChange() {
-    if (models[modelToDownload].installed) {
-      selectedModel = modelToDownload
+    if (disabled) return;
+
+    if (models[modelToDownload]?.installed) {
+      selectedModel = modelToDownload;
     }
   }
 
   async function handleModelDownload() {
-    let downloadingModel = modelToDownload
+    if (disabled || !modelToDownload) return;
+
+    let downloadingModel = modelToDownload;
 
     try {
       let success = await window.api.downloadModel(modelToDownload);
-      
-      if (success) {
 
+      if (success) {
         if (downloadingModel === modelToDownload) {
-          selectedModel = modelToDownload
+          selectedModel = modelToDownload;
         }
 
         alert('Model downloaded successfully');
@@ -50,17 +52,60 @@
       alert('Error downloading model: ' + error.message);
     }
   }
-
 </script>
 
-<div class="model-selector">
-<Select bind:value={modelToDownload} label="Select Ollama Model" onSMUISelectChange={handleModelChange}>
-    {#each modelList as model (model)}
-    <Option value={model}>{model} ({models[model].size})</Option>
-    {/each}
-</Select>
-{#if !models[modelToDownload]?.installed}
-    <Button onclick={handleModelDownload} raised>Download</Button>
-{/if}
+<div class="model-selector" class:disabled>
+  <Select
+    bind:value={modelToDownload}
+    label="Select Ollama Model"
+    disabled={disabled}
+    onSMUISelectChange={handleModelChange}
+  >
+    {#if modelList.length === 0}
+      <Option value="" disabled>Loading models...</Option>
+    {:else}
+      {#each modelList as model (model)}
+        <Option value={model}>
+          {model} ({models[model].size})
+        </Option>
+      {/each}
+    {/if}
+  </Select>
+
+  {#if modelToDownload && !models[modelToDownload]?.installed}
+    <Button onclick={handleModelDownload} raised disabled={disabled}>
+      Download
+    </Button>
+  {/if}
 </div>
-<div>Using {selectedModel}</div>
+
+<div class="using-text">
+  Using {selectedModel || 'None'}
+</div>
+
+<style>
+  .model-selector {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 320px;
+  }
+
+  .using-text {
+    margin-top: 4px;
+    font-size: 0.9rem;
+  }
+
+  .disabled {
+    opacity: 0.55;
+  }
+
+  .model-selector :global(.mdc-select) {
+    min-width: 180px;
+    width: 180px;
+  }
+
+  .model-selector :global(.mdc-button) {
+    white-space: nowrap;
+  }
+</style>
