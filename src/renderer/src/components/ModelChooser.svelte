@@ -54,58 +54,99 @@
   }
 </script>
 
-<div class="model-selector" class:disabled>
-  <Select
-    bind:value={modelToDownload}
-    label="Select Ollama Model"
-    disabled={disabled}
-    onSMUISelectChange={handleModelChange}
-  >
-    {#if modelList.length === 0}
-      <Option value="" disabled>Loading models...</Option>
-    {:else}
-      {#each modelList as model (model)}
-        <Option value={model}>
-          {model} ({models[model].size})
-        </Option>
-      {/each}
+<div class="model-wrap" class:disabled>
+  <div class="model-top-label">Select Model</div>
+
+  <div class="model-selector">
+    <Select
+      bind:value={modelToDownload}
+      label=""
+      variant="outlined"
+      disabled={disabled}
+      onSMUISelectChange={handleModelChange}
+    >
+      {#if modelList.length === 0}
+        <Option value="" disabled>Loading models...</Option>
+      {:else}
+        {#each modelList as model (model)}
+          <Option value={model}>
+            {model} ({models[model].size})
+          </Option>
+        {/each}
+      {/if}
+    </Select>
+
+    {#if modelToDownload && !models[modelToDownload]?.installed}
+      <Button onclick={handleModelDownload} raised disabled={disabled}>
+        Download
+      </Button>
     {/if}
-  </Select>
-
-  {#if modelToDownload && !models[modelToDownload]?.installed}
-    <Button onclick={handleModelDownload} raised disabled={disabled}>
-      Download
-    </Button>
-  {/if}
-</div>
-
-<div class="using-text">
-  Using {selectedModel || 'None'}
+  </div>
 </div>
 
 <style>
-  .model-selector {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    max-width: 320px;
-  }
+.model-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 
-  .using-text {
-    margin-top: 4px;
-    font-size: 0.9rem;
-  }
+.model-top-label {
+  font-size: 11px;
+  color: #666;
+  margin: 0;
+  line-height: 1;
+}
 
-  .disabled {
-    opacity: 0.55;
-  }
+.disabled {
+  opacity: 0.55;
+}
 
-  .model-selector :global(.mdc-select) {
-    min-width: 180px;
-    width: 180px;
-  }
+.model-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
 
-  .model-selector :global(.mdc-button) {
-    white-space: nowrap;
-  }
+/* width */
+.model-selector :global(.mdc-select) {
+  width: 220px;
+}
+
+/* main box */
+.model-selector :global(.mdc-select__anchor) {
+  height: 38px;
+  min-height: 38px;
+  padding: 0 20px 0 12px;
+  border-radius: 8px;
+}
+
+/* remove notch gap completely */
+.model-selector :global(.mdc-notched-outline__notch) {
+  border: none !important;
+  max-width: 0 !important;
+  padding: 0 !important;
+}
+
+/* keep outline clean */
+.model-selector :global(.mdc-notched-outline) {
+  border-radius: 8px;
+}
+
+/* text */
+.model-selector :global(.mdc-select__selected-text) {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+}
+
+/* arrow spacing */
+.model-selector :global(.mdc-select__dropdown-icon) {
+  right: 6px;
+}
+
+.model-selector :global(.mdc-button) {
+  white-space: nowrap;
+}
 </style>
