@@ -169,118 +169,154 @@
 {/if}
 
 <style>
+.timer-card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid #222;
+  background: white;
+  box-sizing: border-box;
+}
+
+.expanded {
+  min-height: 620px;
+  border-radius: 24px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.minimized {
+  min-height: 110px;
+  border-radius: 24px;
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.toggle-btn {
+  position: absolute;
+  top: 8px;
+  right: 18px;
+  font-size: 18px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.toggle-btn:hover {
+  opacity: 0.6;
+}
+
+.timer-mode-select {
+  margin-top: 16px;
+  font-size: 15px;
+  border: 1px solid #222;
+  border-radius: 8px;
+  background: white;
+  padding: 6px 10px;
+  max-width: 100%;
+}
+
+.timer-mode {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #666;
+}
+
+.timer-text {
+  margin-top: 32px;
+  font-size: clamp(34px, 5vw, 64px);
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.timer-actions {
+  margin-top: 40px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.timer-actions button {
+  min-width: 120px;
+  height: 38px;
+  border: 1px solid #222;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+}
+
+.timer-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.study-tip-section {
+  margin-top: 72px;
+  text-align: center;
+  max-width: 280px;
+}
+
+.study-tip-section h2 {
+  font-size: 24px;
+  margin-bottom: 14px;
+}
+
+.study-tip-section p {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.minimized .timer-text {
+  margin-top: 0;
+  font-size: clamp(28px, 4vw, 52px);
+}
+
+.minimized .timer-mode {
+  margin-top: 0;
+}
+
+@media (max-width: 1200px) {
   .timer-card {
-    position: relative;
-    border: 1px solid #222;
-    background: white;
-    box-sizing: border-box;
+    max-width: 340px;
   }
 
   .expanded {
-    width: 100%;
-    max-width: 520px;
-    min-height: 700px;
-    border-radius: 24px;
-    padding: 30px 28px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .minimized {
-    width: 100%;
-    max-width: 520px;
-    min-height: 130px;
-    border-radius: 24px;
-    padding: 40px 28px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-  }
-
-  .toggle-btn {
-    position: absolute;
-    top: 10px;
-    right: 40px;
-    font-size: 18px;
-    font-weight: 500;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0;
-  }
-
-  .toggle-btn:hover {
-    opacity: 0.6;
+    min-height: 540px;
+    padding: 20px 16px;
   }
 
   .timer-mode-select {
-    margin-top: 20px;
-    font-size: 16px;
-    border: 1px solid #222;
-    border-radius: 8px;
-    background: white;
-    padding: 6px 10px;
-  }
-
-  .timer-mode {
-    margin-top: 10px;
     font-size: 14px;
-    color: #666;
-  }
-
-  .timer-text {
-    margin-top: 40px;
-    font-size: 64px;
-    font-weight: 700;
-    line-height: 1;
-  }
-
-  .timer-actions {
-    margin-top: 56px;
-    display: flex;
-    gap: 24px;
   }
 
   .timer-actions button {
-    min-width: 160px;
-    height: 40px;
-    border: 1px solid #222;
-    border-radius: 8px;
-    background: white;
-    cursor: pointer;
-  }
-
-  .timer-actions button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    min-width: 100px;
+    height: 36px;
+    font-size: 14px;
   }
 
   .study-tip-section {
-    margin-top: 120px;
-    text-align: center;
-    max-width: 320px;
+    margin-top: 48px;
+    max-width: 240px;
   }
 
   .study-tip-section h2 {
-    font-size: 28px;
-    margin-bottom: 18px;
+    font-size: 20px;
   }
 
   .study-tip-section p {
-    font-size: 16px;
-    line-height: 1.35;
+    font-size: 14px;
   }
-
-  .minimized .timer-text {
-    margin-top: 0;
-    font-size: 56px;
-  }
-
-  .minimized .timer-mode {
-    margin-top: 0;
-  }
+}
 </style>
