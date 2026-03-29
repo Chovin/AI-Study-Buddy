@@ -204,7 +204,7 @@ flowchart LR
             ConfigurePomodoro([Configure Pomodoro Settings])
             ReceiveMotivation([Receive Motivational Feedback])
             AskQuestions([Ask Questions in Chat])
-            IncludeContent([Include Specific Files or Generated Content in Chat])
+            IncludeContent([Include Specific Files 2 Chat])
         end
 
         %% Model Selection
@@ -233,12 +233,13 @@ flowchart LR
 
     %% File system subgraph
     subgraph FileSystem["Local File System"]
-        SaveUploadedFiles([Save Uploaded Files to &lt;userData&gt;])
-        SaveModels([Save Downloaded Models to &lt;home&gt;/.ollama])
+        SaveUploadedFiles([Save Files to &lt;userData&gt;])
+        SaveModels([Save to &lt;home&gt;/.ollama])
     end
 
     %% LLM subgraph
     subgraph LLM["Open WebUI → Ollama LLM"]
+        RegisterFile([Register file with Open WebUI])
         StartLLMServers([Download & Start Open WebUI & Ollama Servers])
         GenerateByLLM([Generate Summaries, Quizzes, Flashcards])
         SendQuestionToLLM([Send Question to Open WebUI → Ollama LLM])
@@ -253,12 +254,14 @@ flowchart LR
     SaveFileMetadata([Save File Metadata to Database])
     UploadFiles --> SaveFileMetadata
     SaveFileMetadata --> DatabaseStorage
-
-    CreateTopic --> DatabaseStorage
-    GenerateContent --> GenerateByLLM
+    UploadFiles --> RegisterFile
+    SaveChatHistory --> DatabaseStorage
     GenerateByLLM --> DatabaseStorage
-    UseGeneratedContent --> DatabaseStorage
+
     ConfigurePomodoro --> DatabaseStorage
+    GenerateContent --> GenerateByLLM
+    UseGeneratedContent --> DatabaseStorage
+    CreateTopic --> DatabaseStorage
 
     %% Chat & Motivation
     ReceiveMotivation --> GenerateMotivation
@@ -269,11 +272,38 @@ flowchart LR
     SaveChatHistory([Save Chat History by Topic])
     SendQuestionToLLM --> SaveChatHistory
     GenerateMotivation --> SaveChatHistory
-    SaveChatHistory --> DatabaseStorage
+  
 
     %% Model download flow
     ChooseDownloadModel --> DownloadModel
     DownloadModel --> SaveModels
+```
+
+```mermaid
+erDiagram
+    TOPICS {
+        INTEGER id PK "Primary key"
+        TEXT name "Topic name - UNIQUE"
+    }
+
+    FILES {
+        INTEGER id PK "Primary key"
+        INTEGER topic_id FK "References TOPICS(id)"
+        TEXT file_name "File name"
+        TEXT file_path "File path"
+        TEXT webui_id "Optional webui id"
+        INTEGER processed "0 = not processed, 1 = processed, -1 = errored"
+        TEXT processing_error "Optional error message"
+    }
+
+    USERS {
+        INTEGER id PK "Primary key"
+        TEXT email "User email - UNIQUE"
+        TEXT password "User password"
+        TEXT encrypted_api_key "Encrypted API key"
+    }
+
+    TOPICS ||--o{ FILES : "has many"
 ```
 
 ## WishListed Features
