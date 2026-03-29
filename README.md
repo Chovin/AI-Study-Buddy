@@ -279,6 +279,33 @@ flowchart LR
     DownloadModel --> SaveModels
 ```
 
+```mermaid
+erDiagram
+    TOPICS {
+        INTEGER id PK "Primary key"
+        TEXT name "Topic name - UNIQUE"
+    }
+
+    FILES {
+        INTEGER id PK "Primary key"
+        INTEGER topic_id FK "References TOPICS(id)"
+        TEXT file_name "File name"
+        TEXT file_path "File path"
+        TEXT webui_id "Optional webui id"
+        INTEGER processed "0 = not processed, 1 = processed, -1 = errored"
+        TEXT processing_error "Optional error message"
+    }
+
+    USERS {
+        INTEGER id PK "Primary key"
+        TEXT email "User email - UNIQUE"
+        TEXT password "User password"
+        TEXT encrypted_api_key "Encrypted API key"
+    }
+
+    TOPICS ||--o{ FILES : "has many"
+```
+
 ## WishListed Features
 
 * [ ] Summary improvements
