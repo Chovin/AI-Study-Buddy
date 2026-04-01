@@ -12,7 +12,6 @@ import kill from 'tree-kill'
 import { EventSource } from 'eventsource'
 
 const WEBUI_BASE_URL = 'http://localhost:8080/api/v1';
-const PYTHON_CMD = process.platform === 'win32' ? 'python' : 'python3';
 
 const WEBUI_DIR = path.join(app.getPath('userData'), 'webui')
 const VENV_PATH = path.join(WEBUI_DIR, 'venv')
@@ -67,25 +66,29 @@ class LLMInterface {
   }
 
   async ensureVenv() {
-    try {
-      // check Python version first
-      await runCommand(PYTHON_CMD, ['--version'], {
+    const PYTHON_CMDS = process.platform === 'win32' 
+      ? ['python', 'python3', 'py -3.11', 'py -3.12'] 
+      : ['python3', 'python3.11', 'python3.12', 'python']
+    let python_cmd;
+
+    for (let cmd of PYTHON_CMDS) {
+      await runCommand(cmd, ['--version'], {
         stdoutCallback: (data) => {
-          console.log('in python cmd', data, !data.match(/Python 3.1[12]/))
-          if (!data.match(/Python 3.1[12]/)) {
-            throw new Error('Open WebUI requires Python 3.11 or 3.12')
+          console.log('in python cmd', cmd, data, data.match(/Python 3.1[12]/))
+          if (data.match(/Python 3.1[12]/)) {
+            python_cmd = cmd
           }
         }
       })
-    } catch (error) {
-      if (error.message?.includes('3.11')) {
-        throw error
+      if (python_cmd) {
+        break
       }
+    }
+    if (!python_cmd) {
       throw new Error('Python 3 not found. Please install Python 3.11/3.12 first.')
     }
-
     if (!fs.existsSync(VENV_PATH)) {
-      await runCommand(PYTHON_CMD, ['-m', 'venv', VENV_PATH])
+      await runCommand(python_cmd, ['-m', 'venv', VENV_PATH])
     }
   }
 
@@ -121,7 +124,7 @@ class LLMInterface {
     // let lastProgress = 0;
     try {
       await runCommand(VENV_PYTHON, ['-m', 'pip', 'install', '--upgrade', 'pip'])
-      const output = await runCommand(VENV_PYTHON, ['-m', 'pip', 'install', 'open-webui'], {
+      const output = await runCommand(VENV_PYTHON, ['-m', 'pip', 'install', 'numpy<2', 'open-webui[all]'], {
         stdoutCallback: (data) => {
           // pip install doesn't give percentage
           const matchLibrary = data.match(/Downloading (.+?)-/)
