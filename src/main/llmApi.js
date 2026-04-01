@@ -1,5 +1,5 @@
 import { ElectronOllama } from 'electron-ollama'
-import { app, safeStorage, net } from 'electron'
+import { app, safeStorage, net, dialog } from 'electron'
 import { Ollama } from 'ollama'
 import { runCommand, makeRequest, generateSecurePassword, sleep } from './helpers'
 import models from './models'
@@ -713,7 +713,24 @@ class LLMInterface {
     console.log(response)
     console.log(data)
     // remove this later
-    if (data == null) {assistantReply = "The LLM didn't return anything"}
+    if (data == null) {
+      if (model.toLowerCase().endsWith('cloud')) {
+        const options = {
+          type: 'error',
+          buttons: ['Sign in', 'Cancel'],
+          defaultId: 0,
+          title: 'Likely not signed in',
+          message: 'The LLM did not return anything.',
+          detail: 'This is likely because you are not signed into Ollama, which is required for cloud models.'
+        }
+        const { response } = await dialog.showMessageBox(options)
+        if (response === 0) {
+          await this.promptLogin()
+        }
+        throw new Error("The LLM didn't return anything. This is a cloud model. You are likely not logged into Ollama.")
+      }
+      assistantReply = "The LLM didn't return anything"
+    }
     return assistantReply;
   }
 
