@@ -25,6 +25,9 @@
   let quiz = $state([]);
   let generating = $state(false)
 
+  let flashcards = $state([]);
+  let generatingFlashcards = $state(false);
+
   $effect(async () => {
     if (selectedTopic) {
       await fetchFiles(selectedTopic.id);
@@ -99,6 +102,23 @@
     }
   }
 
+  const generateFlashcards = async () => {
+    if (generatingFlashcards) return
+    generatingFlashcards = true
+    if (!selectedTopic) throw new Error('No topic selected');
+    try {
+      flashcards = await window.api.generateFlashcards(selectedModel, selectedTopic.id, files.map(f => f.id), 10, 'hard')
+    } catch (error) {
+      responseString = error.message
+      setTimeout(() => {
+        responseString = ""
+      }, 10_000)
+      throw error
+    } finally {
+      generatingFlashcards = false
+    }
+  }
+
 
 </script>
 
@@ -134,6 +154,17 @@
       </div>
     {/each}
   </form>
+{/each}
+<Button onclick={generateFlashcards}>Generate Flashcards</Button>
+<CircularProgress indeterminate style="height: 32px; width: 32px;" closed={!generatingFlashcards}/>
+{#each flashcards as f, fi (fi)}
+  <div class="flashcard" on:click={() => f.flipped = !f.flipped}>
+    {#if f.flipped}
+      <h3>{f.back}</h3>
+    {:else}
+      <h3>{f.front}</h3>
+    {/if}
+  </div>
 {/each}
 <p class="tip">Please try pressing <code>F12</code> to open the devTool</p>
 <div class="actions">
