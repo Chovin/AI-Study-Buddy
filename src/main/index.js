@@ -378,3 +378,126 @@ ipcMain.handle('generate-quiz', async (_, { model, topicId, fileIds, numberOfQue
     }
   }
 })
+
+async function generateFlashcards(model, topicId, fileIds, numberOfCards, difficulty) {
+  try {
+    const files = (await db.getFilesByTopic(topicId)).filter(f => fileIds.includes(f.id))
+
+    let response = await llmApi.chatWithFileContext({
+      model,
+      files,
+      messages: [
+        {
+          role: 'system',
+          content: `
+You are a study assistant that generates flashcards from provided document context.
+
+Instructions:
+- Generate high-quality flashcards based ONLY on the provided context.
+- Each flashcard must test understanding, not trivial recall.
+- No duplicate flashcards.
+- Ensure the content is actually discussed in the provided context.
+
+Output rules:
+- Return ONLY valid JSON.
+- No explanations, no markdown, no extra text.
+- Ensure JSON is strictly valid and parsable. Do not include trailing commas.
+- Escape double quotes, backslashes, and newlines.
+- Don't use any markdown syntax.
+
+Format:
+[
+  {
+    "front": "<question or prompt>",
+    "back": "<answer or explanation>"
+  },
+  {
+    "front": "<question or prompt>",
+    "back": "<answer or explanation>"
+  }
+]
+          `
+        },
+        {
+          role: 'user',
+          content: `generate ${numberOfCards} ${difficulty}-difficulty flashcards`
+        }
+      ]
+    })
+
+    console.log(response)
+
+    response = response.trim()
+
+    if (response.startsWith('```json')) {
+      response = response.substring(7)
+    }
+    if (response.endsWith('```')) {
+      response = response.substring(0, response.length - 3)
+    }
+
+    response = response.trim()
+
+    // cleanup tags
+    if (response.match(/<(card|p|context) ?\d*\/?>/)) console.log(response)
+    response = response.replaceAll(/<\/?(card|p) ?\d*\/?>/g, "")
+    response = response.replaceAll(/"\[\d+\] ?/g, '"')
+
+    if (response.match(/\[\d+\]/)) {
+      throw new Error("Incorrectly formatted flashcards")
+    }
+
+    const flashcards = JSON.parse(response)
+
+    if (
+      flashcards.some(f => !f.front.trim()) ||
+      flashcards.some(f => !f.back.trim())
+    ) {
+      throw new Error("Empty flashcard content")
+    }
+
+    return flashcards
+  } catch (err) {
+    if (err.error == 'unauthorized' || err.status_code == 401) {
+      throw new Error("Cloud models require signing into Ollama")
+    }
+    throw err
+  }
+}
+
+let flashcardNumber = 1
+ipcMain.handle('generate-flashcards', async (_, { model, topicId, fileIds, numberOfCards, difficulty }) => {
+  if (starting || !llmApi.running) throw new Error("Ollama and/or Open WebUI aren't running yet")
+
+  const GFID = `Generating Flashcards ${flashcardNumber}`
+  flashcardNumber += 1
+
+  let tries = 0
+  const { updateTask, finishTask, failTask } = progressManager.startFakeProgressTask(GFID)
+
+  while (true) {
+    try {
+      const flashcards = await generateFlashcards(model, topicId, fileIds, numberOfCards, difficulty)
+
+      let seen = {}
+      flashcards.forEach(f => {
+        if (seen[f.front]) throw new Error('Duplicate flashcard')
+        seen[f.front] = true
+      })
+
+      finishTask()
+      return flashcards
+    } catch (error) {
+      console.log('Error generating flashcards. Trying again. ', error)
+      updateTask({ msg: `Error generating flashcards. Trying again. ${error}`, progress: 0 })
+
+      tries += 1
+      if (tries >= 5) {
+        failTask(`Failed too many times to generate flashcards. Something is probably wrong.`, error)
+        throw new Error(`Failed too many times to generate flashcards. You may want to try a different model. ${error}`)
+      }
+
+      continue
+    }
+  }
+})
