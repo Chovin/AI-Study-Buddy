@@ -25,6 +25,7 @@
     "eventsource": "^4.1.0",
     "flowbite": "^4.0.1",
     "flowbite-svelte": "^1.33.0",
+    "lucide-svelte": "^1.0.1",
     "material-icons": "^1.13.14",
     "ollama": "^0.6.3",
     "sqlite3": "^5.1.7",

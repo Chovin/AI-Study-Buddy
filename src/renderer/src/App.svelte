@@ -1,8 +1,10 @@
 <script>
-  import Versions from './components/Versions.svelte'
+  import Sidebar from './components/Sidebar.svelte'
+
   import TopicManager from './components/TopicManager.svelte'
   import FileUploader from './components/FileUploader.svelte'
   import ModelChooser from './components/ModelChooser.svelte'
+  import TopicChooser from './components/TopicChooser.svelte'
   import ProgressNotifications from './components/ProgressNotifications.svelte'
   import TimerPanel from './components/TimerPanel.svelte'
 
@@ -16,6 +18,9 @@
   import 'svelte-material-ui/themes/svelte.css'
   import 'material-icons/iconfont/material-icons.css'
 
+  let collapsed = $state(false)
+  let active = $state('topics')
+
   let ollamaReady = $state(false)
   let selectedTopic = $state(null)
   let files = $state([])
@@ -23,14 +28,18 @@
   let models = $state({})
   let selectedModel = $state('')
 
-  let responseString = $state("")
-  let question = $state("")
+  let responseString = $state('')
+  let question = $state('')
   let quiz = $state([])
   let generating = $state(false)
+
+  let topicChooserRef
 
   $effect(async () => {
     if (selectedTopic) {
       await fetchFiles(selectedTopic.id)
+    } else {
+      files = []
     }
   })
 
@@ -41,14 +50,21 @@
   async function deleteFile(fileId) {
     if (confirm('Are you sure you want to delete this file?')) {
       await window.api.deleteFile(fileId)
-      await fetchFiles(selectedTopic.id)
+      if (selectedTopic) {
+        await fetchFiles(selectedTopic.id)
+      }
     }
+  }
+
+  async function refreshTopics() {
+    await topicChooserRef?.loadTopics()
   }
 
   onMount(() => {
     window.api.onOllamaReady(async () => {
       models = await window.api.getModels()
-      selectedModel = Object.entries(models).find(([_, o]) => o.summarizer)?.[0] || ''
+      selectedModel =
+        Object.entries(models).find(([_, o]) => o.summarizer)?.[0] || ''
       ollamaReady = true
     })
 
@@ -105,7 +121,7 @@
     } catch (error) {
       responseString = error.message
       setTimeout(() => {
-        responseString = ""
+        responseString = ''
       }, 10_000)
       throw error
     } finally {
@@ -122,6 +138,11 @@
         bind:selectedModel
         disabled={!ollamaReady}
       />
+
+      <TopicChooser
+        bind:this={topicChooserRef}
+        bind:selectedTopic
+      />
     </div>
 
     <div class="nav-right">
@@ -129,95 +150,162 @@
     </div>
   </div>
 
-  <div class="page-layout">
-    <div class="main-content">
-      <div class="using-text">
-        Using {selectedModel || 'None'}
-      </div>
+  <div class="body-layout">
+    <Sidebar bind:collapsed bind:active />
 
-      <div class="chat-row">
-        <Textfield
-          class="chat-input"
-          bind:value={question}
-          onkeydown={handleChatKeyDown}
-        />
-        <Button onclick={sendChat}>Send</Button>
-      </div>
+    <main class="page-content">
+      {#if active === 'topics'}
+        <section class="panel">
+          <div class="section-header">
+            <h2>Topics</h2>
+            <p>Manage your study topics and files here.</p>
+          </div>
 
-      {#if responseString}
-        <div class="response-block">
-          <p>{responseString}</p>
-        </div>
-      {/if}
+          <div class="topic-section">
+            <TopicManager
+              bind:selectedTopic
+              on:topicsUpdated={refreshTopics}
+            />
 
-      <div class="quiz-actions">
-        <Button onclick={generateQuiz}>Generate Quiz</Button>
-        <CircularProgress
-          indeterminate
-          style="height: 32px; width: 32px;"
-          closed={!generating}
-        />
-      </div>
+            {#if selectedTopic}
+              <div class="topic-files">
+                <h3>Files in {selectedTopic.name}</h3>
 
-      {#each quiz as q, qi (q.question)}
-        <h3>{q.question}</h3>
-        <form>
-          {#each q.choices as c, i (c)}
-            <div
-              class={{
-                answer: q.answered && q.answer == i,
-                guessed: q.answered && q.guessed == i
-              }}
-              on:click={() => {
-                q.guessed = i
-                q.answered = true
-              }}
-            >
-              <input
-                type="radio"
-                id={`${qi}_${i}`}
-                value={i}
-                name={qi}
-              />
-              <label for={`${qi}_${i}`}>{c}</label>
+                <FileUploader
+                  {selectedTopic}
+                  on:filesUpdated={() => fetchFiles(selectedTopic.id)}
+                />
+
+                <List>
+                  {#each files as file (file.id)}
+                    <Item>
+                      {file.file_name}
+                      <IconButton onclick={() => deleteFile(file.id)}>
+                        <span class="material-icons-outlined">delete</span>
+                      </IconButton>
+                    </Item>
+                  {/each}
+                </List>
+              </div>
+            {/if}
+          </div>
+        </section>
+
+      {:else if active === 'chat'}
+        <section class="panel">
+          <div class="section-header">
+            <h2>Chat</h2>
+            <p>Ask questions about the files in your selected topic.</p>
+          </div>
+
+          <div class="using-text">
+            Using {selectedModel || 'None'}
+          </div>
+
+          <div class="chat-row">
+            <Textfield
+              class="chat-input"
+              bind:value={question}
+              onkeydown={handleChatKeyDown}
+              disabled={!selectedTopic}
+            />
+            <Button onclick={sendChat} disabled={!selectedTopic}>Send</Button>
+          </div>
+
+          {#if !selectedTopic}
+            <p class="helper-text">Please select a topic first.</p>
+          {/if}
+
+          {#if responseString}
+            <div class="response-block">
+              <p>{responseString}</p>
+            </div>
+          {/if}
+        </section>
+
+      {:else if active === 'flashcards'}
+        <section class="panel">
+          <div class="section-header">
+            <h2>Flashcards</h2>
+            <p>Your flashcards page goes here.</p>
+          </div>
+        </section>
+
+      {:else if active === 'quiz'}
+        <section class="panel">
+          <div class="section-header">
+            <h2>Quiz</h2>
+            <p>Generate a quiz from the selected topic and its files.</p>
+          </div>
+
+          <div class="using-text">
+            Using {selectedModel || 'None'}
+          </div>
+
+          <div class="quiz-actions">
+            <Button onclick={generateQuiz} disabled={!selectedTopic || generating}>
+              Generate Quiz
+            </Button>
+
+            <CircularProgress
+              indeterminate
+              style="height: 32px; width: 32px;"
+              closed={!generating}
+            />
+          </div>
+
+          {#if !selectedTopic}
+            <p class="helper-text">Please select a topic first.</p>
+          {/if}
+
+          {#each quiz as q, qi (q.question)}
+            <div class="quiz-card">
+              <h3>{q.question}</h3>
+
+              <form>
+                {#each q.choices as c, i (c)}
+                  <div
+                    class:answer={q.answered && q.answer == i}
+                    class:guessed={q.answered && q.guessed == i}
+                    class="choice-row"
+                    on:click={() => {
+                      q.guessed = i
+                      q.answered = true
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      id={`${qi}_${i}`}
+                      value={i}
+                      name={qi}
+                    />
+                    <label for={`${qi}_${i}`}>{c}</label>
+                  </div>
+                {/each}
+              </form>
             </div>
           {/each}
-        </form>
-      {/each}
+        </section>
 
-      <div class="topic-section">
-        <TopicManager bind:selectedTopic />
+      {:else if active === 'timer'}
+        <section class="panel timer-page">
+          <div class="section-header">
+            <h2>Timer</h2>
+            <p>Use your study timer here.</p>
+          </div>
 
-        {#if selectedTopic}
-          <h3>Files in {selectedTopic.name}</h3>
-          <FileUploader
-            {selectedTopic}
-            on:filesUpdated={() => fetchFiles(selectedTopic.id)}
-          />
-
-          <List>
-            {#each files as file (file.id)}
-              <Item>
-                {file.file_name}
-                <IconButton onclick={() => deleteFile(file.id)}>
-                  <span class="material-icons-outlined">delete</span>
-                </IconButton>
-              </Item>
-            {/each}
-          </List>
-        {/if}
-      </div>
-    </div>
-
-    <aside class="right-sidebar">
-      <TimerPanel />
-    </aside>
+          <TimerPanel />
+        </section>
+      {/if}
+    </main>
   </div>
 </div>
 
 <style>
   .app-shell {
-    min-height: 100vh;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
     background: white;
   }
 
@@ -229,17 +317,17 @@
     padding: 10px 16px;
     border-bottom: 1px solid #ddd;
     background: white;
-    position: sticky;
-    top: 0;
-    z-index: 100;
     box-sizing: border-box;
     gap: 16px;
+    flex-shrink: 0;
   }
 
   .nav-left {
     display: flex;
     align-items: center;
     flex: 0 0 auto;
+    gap: 12px;
+    flex-wrap: wrap;
   }
 
   .nav-right {
@@ -249,25 +337,37 @@
     text-align: right;
   }
 
-  .page-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 380px;
-    gap: 24px;
-    padding: 20px;
-    box-sizing: border-box;
-    align-items: start;
-  }
-
-  .main-content {
-    min-width: 0;
-  }
-
-  .right-sidebar {
+  .body-layout {
+    flex: 1;
+    min-height: 0;
     display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    position: sticky;
-    top: 90px;
+  }
+
+  .page-content {
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+
+  .panel {
+    max-width: 1000px;
+  }
+
+  .section-header {
+    margin-bottom: 20px;
+  }
+
+  .section-header h2 {
+    margin: 0 0 6px 0;
+    font-size: 28px;
+  }
+
+  .section-header p {
+    margin: 0;
+    color: #666;
+    font-size: 14px;
   }
 
   .using-text {
@@ -280,7 +380,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
   }
 
   .chat-input {
@@ -288,7 +388,11 @@
   }
 
   .response-block {
-    margin-bottom: 16px;
+    margin-top: 16px;
+    padding: 16px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background: #fafafa;
   }
 
   .quiz-actions {
@@ -299,7 +403,32 @@
   }
 
   .topic-section {
-    margin-top: 24px;
+    margin-top: 12px;
+  }
+
+  .topic-files {
+    margin-top: 20px;
+  }
+
+  .helper-text {
+    color: #666;
+    font-size: 14px;
+    margin-top: 12px;
+  }
+
+  .quiz-card {
+    margin-top: 18px;
+    padding: 16px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background: #fff;
+  }
+
+  .choice-row {
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
   }
 
   .answer {
@@ -312,5 +441,11 @@
 
   .answer.guessed {
     background-color: rgb(125, 222, 125);
+  }
+
+  .timer-page {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
   }
 </style>
