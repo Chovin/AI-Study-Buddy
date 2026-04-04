@@ -33,6 +33,9 @@
   let quiz = $state([])
   let generating = $state(false)
 
+  let flashcards = $state([])
+  let generatingFlashcards = $state(false)
+
   let topicChooserRef
 
   $effect(async () => {
@@ -126,6 +129,36 @@
       throw error
     } finally {
       generating = false
+    }
+  }
+
+  const generateFlashcards = async () => {
+    if (generatingFlashcards) return
+    generatingFlashcards = true
+
+    if (!selectedTopic) throw new Error('No topic selected')
+
+    try {
+      flashcards = await window.api.generateFlashcards(
+        selectedModel,
+        selectedTopic.id,
+        files.map(f => f.id),
+        10,
+        'hard'
+      )
+
+      flashcards = flashcards.map(card => ({
+        ...card,
+        flipped: false
+      }))
+    } catch (error) {
+      responseString = error.message
+      setTimeout(() => {
+        responseString = ''
+      }, 10_000)
+      throw error
+    } finally {
+      generatingFlashcards = false
     }
   }
 </script>
@@ -227,7 +260,42 @@
         <section class="panel">
           <div class="section-header">
             <h2>Flashcards</h2>
-            <p>Your flashcards page goes here.</p>
+            <p>Generate flashcards from the selected topic and its files.</p>
+          </div>
+
+          <div class="using-text">
+            Using {selectedModel || 'None'}
+          </div>
+
+          <div class="quiz-actions">
+            <Button onclick={generateFlashcards} disabled={!selectedTopic || generatingFlashcards}>
+              Generate Flashcards
+            </Button>
+
+            <CircularProgress
+              indeterminate
+              style="height: 32px; width: 32px;"
+              closed={!generatingFlashcards}
+            />
+          </div>
+
+          {#if !selectedTopic}
+            <p class="helper-text">Please select a topic first.</p>
+          {/if}
+
+          <div class="flashcards-grid">
+            {#each flashcards as f, fi (fi)}
+              <div
+                class="flashcard"
+                on:click={() => (f.flipped = !f.flipped)}
+              >
+                {#if f.flipped}
+                  <h3>{f.back}</h3>
+                {:else}
+                  <h3>{f.front}</h3>
+                {/if}
+              </div>
+            {/each}
           </div>
         </section>
 
@@ -441,6 +509,38 @@
 
   .answer.guessed {
     background-color: rgb(125, 222, 125);
+  }
+
+  .flashcards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+  }
+
+  .flashcard {
+    min-height: 160px;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 16px;
+    background: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .flashcard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  .flashcard h3 {
+    margin: 0;
+    font-size: 20px;
   }
 
   .timer-page {

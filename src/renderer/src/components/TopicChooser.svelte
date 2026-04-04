@@ -1,5 +1,4 @@
 <script>
-  import Select, { Option } from '@smui/select'
   import { onMount } from 'svelte'
 
   export let selectedTopic = null
@@ -11,53 +10,65 @@
     topics = await window.api.getTopics()
 
     if (selectedTopic) {
-      const stillExists = topics.find(t => String(t.id) === String(selectedTopic.id))
-      if (stillExists) {
-        selectedTopic = stillExists
-        selectedValue = String(stillExists.id)
+      const match = topics.find(t => String(t.id) === String(selectedTopic.id))
+      if (match) {
+        selectedTopic = match
       } else {
         selectedTopic = null
-        selectedValue = ''
       }
-    } else {
-      selectedValue = ''
     }
+
+    selectedValue = selectedTopic ? String(selectedTopic.id) : ''
   }
 
   onMount(async () => {
     await loadTopics()
   })
 
-  $: if (selectedTopic) {
-    selectedValue = String(selectedTopic.id)
-  } else {
-    selectedValue = ''
-  }
+  $: selectedValue = selectedTopic ? String(selectedTopic.id) : ''
 
-  function handleChange() {
+  function handleChange(event) {
+    selectedValue = event.target.value
     const chosen = topics.find(t => String(t.id) === String(selectedValue))
     selectedTopic = chosen || null
   }
 </script>
 
 <div class="topic-chooser">
-  <Select
-    bind:value={selectedValue}
-    label="Select Topic"
-    outlined
+  <label for="topic-select">Select Topic</label>
+  <select
+    id="topic-select"
+    value={selectedValue}
     onchange={handleChange}
   >
-    <Option value="">None</Option>
+    <option value="">None</option>
     {#each topics as topic}
-      <Option value={String(topic.id)}>
+      <option value={String(topic.id)}>
         {topic.name}
-      </Option>
+      </option>
     {/each}
-  </Select>
+  </select>
 </div>
 
 <style>
   .topic-chooser {
     min-width: 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .topic-chooser label {
+    font-size: 14px;
+    color: #666;
+  }
+
+  .topic-chooser select {
+    min-width: 220px;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font: inherit;
+    background: white;
   }
 </style>

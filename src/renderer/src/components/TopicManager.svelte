@@ -1,7 +1,6 @@
 <script>
   import { onMount, createEventDispatcher, tick } from 'svelte'
   import Button from '@smui/button'
-  import List, { Item } from '@smui/list'
   import IconButton from '@smui/icon-button'
 
   export let selectedTopic = null
@@ -42,10 +41,14 @@
 
     if (createdTopic?.id) {
       const found = topics.find(topic => topic.id === createdTopic.id)
-      if (found) selectedTopic = found
+      if (found) {
+        selectedTopic = found
+      }
     } else {
       const found = topics.find(topic => topic.name === name)
-      if (found) selectedTopic = found
+      if (found) {
+        selectedTopic = found
+      }
     }
 
     notifyTopicsUpdated()
@@ -96,6 +99,7 @@
 
   function selectTopic(topic) {
     selectedTopic = topic
+    notifyTopicsUpdated()
   }
 
   async function handleEditKeyDown(event) {
@@ -127,7 +131,7 @@
         id="new-topic"
         type="text"
         bind:value={newTopic}
-        on:keydown={handleCreateKeyDown}
+        onkeydown={handleCreateKeyDown}
         placeholder="Enter topic name"
       />
     </div>
@@ -135,52 +139,59 @@
     <Button onclick={createTopic} raised>Create Topic</Button>
   </div>
 
-  <List>
-    {#each topics as topic (topic.id)}
-      <Item>
-        {#if editingTopicId === topic.id}
-          <div class="topic-row editing-row">
-            <input
-              type="text"
-              bind:value={editingTopicName}
-              on:keydown={handleEditKeyDown}
-              bind:this={editInputRef}
-              class="edit-input"
-            />
+ <div class="topics-list">
+  {#each topics as topic (topic.id)}
+    {#if editingTopicId === topic.id}
+      <div class="topic-row editing-row">
+        <input
+          type="text"
+          bind:value={editingTopicName}
+          onkeydown={handleEditKeyDown}
+          bind:this={editInputRef}
+          class="edit-input"
+        />
 
-            <IconButton onclick={saveEditTopic}>
-              <span class="material-icons-outlined">save</span>
-            </IconButton>
+        <IconButton onclick={saveEditTopic}>
+          <span class="material-icons-outlined">save</span>
+        </IconButton>
 
-            <IconButton onclick={cancelEdit}>
-              <span class="material-icons-outlined">cancel</span>
-            </IconButton>
-          </div>
-        {:else}
-          <div class="topic-row">
-            <button
-              type="button"
-              class="topic-name"
-              class:selected={selectedTopic?.id === topic.id}
-              on:click={() => selectTopic(topic)}
-            >
-              {topic.name}
-            </button>
+        <IconButton onclick={cancelEdit}>
+          <span class="material-icons-outlined">cancel</span>
+        </IconButton>
+      </div>
+    {:else}
+      <div
+        class="topic-row clickable-row"
+        class:selected-row={selectedTopic?.id === topic.id}
+        onclick={() => selectTopic(topic)}
+      >
+        <span class="topic-name">
+          {topic.name}
+        </span>
 
-            <div class="topic-actions">
-              <IconButton onclick={() => startEdit(topic)}>
-                <span class="material-icons-outlined">edit</span>
-              </IconButton>
+        <div class="topic-actions">
+          <IconButton
+            onclick={(event) => {
+              event.stopPropagation()
+              startEdit(topic)
+            }}
+          >
+            <span class="material-icons-outlined">edit</span>
+          </IconButton>
 
-              <IconButton onclick={() => deleteTopic(topic)}>
-                <span class="material-icons-outlined">delete</span>
-              </IconButton>
-            </div>
-          </div>
-        {/if}
-      </Item>
-    {/each}
-  </List>
+          <IconButton
+            onclick={(event) => {
+              event.stopPropagation()
+              deleteTopic(topic)
+            }}
+          >
+            <span class="material-icons-outlined">delete</span>
+          </IconButton>
+        </div>
+      </div>
+    {/if}
+  {/each}
+</div>
 </div>
 
 <style>
@@ -223,12 +234,34 @@
     border-bottom: 2px solid #ff5a1f;
   }
 
+  .topics-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
   .topic-row {
     width: 100%;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    box-sizing: border-box;
+  }
+
+  .clickable-row {
+    cursor: pointer;
+  }
+
+  .clickable-row:hover {
+    background: #f3f3f3;
+  }
+
+  .selected-row {
+    background: #ececec;
   }
 
   .editing-row {
@@ -236,16 +269,8 @@
   }
 
   .topic-name {
-    border: none;
-    background: transparent;
-    padding: 0;
     font: inherit;
-    cursor: pointer;
     text-align: left;
-  }
-
-  .topic-name.selected {
-    font-weight: 600;
   }
 
   .topic-actions {
