@@ -58,6 +58,9 @@ const api = {
   },
   generateQuiz: async (model, topicId, fileIds, numberOfQuestions, difficulty) => {
     return await electronAPI.ipcRenderer.invoke('generate-quiz', { model, topicId, fileIds, numberOfQuestions, difficulty })
+  },
+  generateFlashcards: async (model, topicId, fileIds, numberOfCards, difficulty) => {
+    return await electronAPI.ipcRenderer.invoke('generate-flashcards', { model, topicId, fileIds, numberOfCards, difficulty })
   }
 }
 
