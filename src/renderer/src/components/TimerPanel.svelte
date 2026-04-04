@@ -6,7 +6,7 @@
   const workSeconds = 25 * 60;
   const breakSeconds = 5 * 60;
 
-  let mode = 'pomodoro'; // 'pomodoro' or 'stopwatch'
+  let mode = 'pomodoro';
 
   let isBreak = false;
   let totalSeconds = workSeconds;
