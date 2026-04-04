@@ -28,6 +28,11 @@
   let flashcards = $state([]);
   let generatingFlashcards = $state(false);
 
+  let quickSummary = $state("");
+  let detailedSummary = $state("");
+  let generatingQuickSummary = $state(false);
+  let generatingDetailedSummary = $state(false);
+
   $effect(async () => {
     if (selectedTopic) {
       await fetchFiles(selectedTopic.id);
@@ -119,6 +124,40 @@
     }
   }
 
+  const generateQuickSummary = async () => {
+    if (generatingQuickSummary) return
+    generatingQuickSummary = true
+    if (!selectedTopic) throw new Error('No topic selected');
+    try {
+      quickSummary = await window.api.generateQuickSummary(selectedModel, selectedTopic.id, files.map(f => f.id))
+    } catch (error) {
+      responseString = error.message
+      setTimeout(() => {
+        responseString = ""
+      }, 10_000)
+      throw error
+    } finally {
+      generatingQuickSummary = false
+    }
+  }
+
+  const generateDetailedSummary = async () => {
+    if (generatingDetailedSummary) return
+    generatingDetailedSummary = true
+    if (!selectedTopic) throw new Error('No topic selected');
+    try {
+      detailedSummary = await window.api.generateDetailedSummary(selectedModel, selectedTopic.id, files.map(f => f.id))
+    } catch (error) {
+      responseString = error.message
+      setTimeout(() => {
+        responseString = ""
+      }, 10_000)
+      throw error
+    } finally {
+      generatingDetailedSummary = false
+    }
+  }
+
 
 </script>
 
@@ -166,6 +205,22 @@
     {/if}
   </div>
 {/each}
+<Button onclick={generateQuickSummary}>Generate Quick Summary</Button>
+<CircularProgress indeterminate style="height: 32px; width: 32px;" closed={!generatingQuickSummary}/>
+<Button onclick={generateDetailedSummary}>Generate Detailed Summary</Button>
+<CircularProgress indeterminate style="height: 32px; width: 32px;" closed={!generatingDetailedSummary}/>
+{#if quickSummary}
+  <div class="summary">
+    <h3>Quick Summary</h3>
+    <div>{@html quickSummary.replace(/\n/g, '<br>')}</div>
+  </div>
+{/if}
+{#if detailedSummary}
+  <div class="summary">
+    <h3>Detailed Summary</h3>
+    <div>{@html detailedSummary.replace(/\n/g, '<br>')}</div>
+  </div>
+{/if}
 <p class="tip">Please try pressing <code>F12</code> to open the devTool</p>
 <div class="actions">
   <div class="action">

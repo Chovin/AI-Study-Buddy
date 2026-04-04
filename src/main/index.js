@@ -501,3 +501,151 @@ ipcMain.handle('generate-flashcards', async (_, { model, topicId, fileIds, numbe
     }
   }
 })
+
+async function generateSummaryBase(model, topicId, fileIds, style) {
+  try {
+    const files = (await db.getFilesByTopic(topicId)).filter(f => fileIds.includes(f.id))
+
+    let prompt = ''
+    if (style === 'quick') {
+      prompt = `
+You are a study assistant that creates concise summaries from provided document context.
+
+Instructions:
+- Create a short, clear summary based ONLY on the provided context.
+- Focus on the most important ideas and key facts.
+- Use bullet points or a brief paragraph.
+- Keep the summary concise and easy to scan.
+
+Output rules:
+- Return a well-formatted markdown summary.
+- Do not include any text outside the summary.
+- Use headers and bullets only when helpful.`
+    } else {
+      prompt = `
+You are a study assistant that creates in-depth summaries from provided document context.
+
+Instructions:
+- Create a detailed, well-organized summary based ONLY on the provided context.
+- Highlight key concepts, supporting details, and important relationships.
+- Use sections, headers, and bullet points where helpful.
+- Make the summary comprehensive and easy to understand.
+
+Output rules:
+- Return a well-formatted markdown summary.
+- Do not include any text outside the summary.
+- Use headers, bullets, and bold text for clarity.`
+    }
+
+    let response = await llmApi.chatWithFileContext({
+      model,
+      files,
+      messages: [
+        {
+          role: 'system',
+          content: prompt
+        },
+        {
+          role: 'user',
+          content: `Create a ${style} summary of the provided documents.`
+        }
+      ]
+    })
+
+    console.log(response)
+
+    response = response.trim()
+
+    if (response.startsWith('```')) {
+      response = response.substring(response.indexOf('\n') + 1)
+    }
+    if (response.endsWith('```')) {
+      response = response.substring(0, response.lastIndexOf('```'))
+    }
+
+    response = response.trim()
+
+    if (!response) {
+      throw new Error("Empty summary generated")
+    }
+
+    return response
+  } catch (err) {
+    if (err.error == 'unauthorized' || err.status_code == 401) {
+      throw new Error("Cloud models require signing into Ollama")
+    }
+    throw err
+  }
+}
+
+async function generateQuickSummary(model, topicId, fileIds) {
+  return generateSummaryBase(model, topicId, fileIds, 'quick')
+}
+
+async function generateDetailedSummary(model, topicId, fileIds) {
+  return generateSummaryBase(model, topicId, fileIds, 'detailed')
+}
+
+let summaryNumber = 1
+ipcMain.handle('generate-summary', async (_, { model, topicId, fileIds }) => {
+  if (starting || !llmApi.running) throw new Error("Ollama and/or Open WebUI aren't running yet")
+  return await generateQuickSummary(model, topicId, fileIds)
+})
+
+ipcMain.handle('generate-quick-summary', async (_, { model, topicId, fileIds }) => {
+  if (starting || !llmApi.running) throw new Error("Ollama and/or Open WebUI aren't running yet")
+
+  const GSID = `Generating Quick Summary ${summaryNumber}`
+  summaryNumber += 1
+
+  let tries = 0
+  const { updateTask, finishTask, failTask } = progressManager.startFakeProgressTask(GSID)
+
+  while (true) {
+    try {
+      const summary = await generateQuickSummary(model, topicId, fileIds)
+      finishTask()
+      return summary
+    } catch (error) {
+      console.log('Error generating quick summary. Trying again. ', error)
+      updateTask({ msg: `Error generating quick summary. Trying again. ${error}`, progress: 0 })
+
+      tries += 1
+      if (tries >= 5) {
+        failTask(`Failed too many times to generate a quick summary. Something is probably wrong.`, error)
+        throw new Error(`Failed too many times to generate a quick summary. Something is probably wrong. You may want to try a different model. ${error}`)
+      }
+
+      continue
+    }
+  }
+})
+
+ipcMain.handle('generate-detailed-summary', async (_, { model, topicId, fileIds }) => {
+  if (starting || !llmApi.running) throw new Error("Ollama and/or Open WebUI aren't running yet")
+
+  const GSID = `Generating Detailed Summary ${summaryNumber}`
+  summaryNumber += 1
+
+  let tries = 0
+  const { updateTask, finishTask, failTask } = progressManager.startFakeProgressTask(GSID)
+
+  while (true) {
+    try {
+      const summary = await generateDetailedSummary(model, topicId, fileIds)
+      finishTask()
+      return summary
+    } catch (error) {
+      console.log('Error generating detailed summary. Trying again. ', error)
+      updateTask({ msg: `Error generating detailed summary. Trying again. ${error}`, progress: 0 })
+
+      tries += 1
+      if (tries >= 5) {
+        failTask(`Failed too many times to generate a detailed summary. Something is probably wrong.`, error)
+        throw new Error(`Failed too many times to generate a detailed summary. Something is probably wrong. You may want to try a different model. ${error}`)
+      }
+
+      continue
+    }
+  }
+})

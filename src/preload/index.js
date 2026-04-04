@@ -61,6 +61,15 @@ const api = {
   },
   generateFlashcards: async (model, topicId, fileIds, numberOfCards, difficulty) => {
     return await electronAPI.ipcRenderer.invoke('generate-flashcards', { model, topicId, fileIds, numberOfCards, difficulty })
+  },
+  generateSummary: async (model, topicId, fileIds) => {
+    return await electronAPI.ipcRenderer.invoke('generate-summary', { model, topicId, fileIds })
+  },
+  generateQuickSummary: async (model, topicId, fileIds) => {
+    return await electronAPI.ipcRenderer.invoke('generate-quick-summary', { model, topicId, fileIds })
+  },
+  generateDetailedSummary: async (model, topicId, fileIds) => {
+    return await electronAPI.ipcRenderer.invoke('generate-detailed-summary', { model, topicId, fileIds })
   }
 }
 
