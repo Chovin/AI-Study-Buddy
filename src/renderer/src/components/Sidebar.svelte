@@ -45,49 +45,73 @@
 </aside>
 
 <style>
-  .sidebar {
+    .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: auto;
+    bottom: auto;
+    z-index: 1000;
+    box-sizing: border-box;
+
     width: 220px;
+    max-width: 220px;
     min-width: 220px;
-    background: #f8f8f8;
-    border-right: 1px solid #ddd;
+    height: 100vh;
+
+    background: #fff;
+    border-right: 2px solid #dc5f5a;
+
     display: flex;
     flex-direction: column;
-    transition: width 0.25s ease, min-width 0.25s ease;
     overflow: hidden;
+
+    transition: width 0.25s ease, min-width 0.25s ease, max-width 0.25s ease;
   }
 
   .sidebar.collapsed {
     width: 72px;
+    max-width: 72px;
     min-width: 72px;
   }
 
   .sidebar-top {
     display: flex;
     justify-content: flex-end;
-    padding: 12px;
-    border-bottom: 1px solid #ddd;
+    padding: 12px 8px 6px;
+    box-sizing: border-box;
+  }
+
+  .sidebar.collapsed .sidebar-top {
+    justify-content: center;
+    padding: 12px 0 6px;
   }
 
   .toggle-btn {
+    width: 44px;
+    height: 44px;
     border: none;
     background: transparent;
     cursor: pointer;
-    border-radius: 8px;
-    padding: 6px;
+    border-radius: 10px;
+
     display: flex;
     align-items: center;
     justify-content: center;
+    flex: 0 0 44px;
   }
 
   .toggle-btn:hover {
-    background: #eaeaea;
+    background: #ececec;
   }
 
   .nav {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 12px 8px;
+    padding: 25px 8px 12px;
+    box-sizing: border-box;
+    width: 100%;
   }
 
   .nav-item {
@@ -102,6 +126,7 @@
     cursor: pointer;
     font-size: 14px;
     text-align: left;
+    box-sizing: border-box;
   }
 
   .nav-item:hover {

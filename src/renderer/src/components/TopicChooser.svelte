@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte'
+  import Select, { Option } from '@smui/select'
 
   export let selectedTopic = null
 
@@ -27,48 +28,28 @@
 
   $: selectedValue = selectedTopic ? String(selectedTopic.id) : ''
 
-  function handleChange(event) {
-    selectedValue = event.target.value
+  function handleChange() {
     const chosen = topics.find(t => String(t.id) === String(selectedValue))
     selectedTopic = chosen || null
   }
 </script>
 
-<div class="topic-chooser">
-  <label for="topic-select">Select Topic</label>
-  <select
-    id="topic-select"
-    value={selectedValue}
-    onchange={handleChange}
-  >
-    <option value="">None</option>
-    {#each topics as topic}
-      <option value={String(topic.id)}>
-        {topic.name}
-      </option>
-    {/each}
-  </select>
+<div class="selector-wrap">
+  <div class="selector-label">Select Topic</div>
+
+  <div class="selector-box">
+    <Select
+      bind:value={selectedValue}
+      label=""
+      variant="outlined"
+      onSMUISelectChange={handleChange}
+    >
+      <Option value="">None</Option>
+      {#each topics as topic}
+        <Option value={String(topic.id)}>
+          {topic.name}
+        </Option>
+      {/each}
+    </Select>
+  </div>
 </div>
-
-<style>
-  .topic-chooser {
-    min-width: 220px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .topic-chooser label {
-    font-size: 14px;
-    color: #666;
-  }
-
-  .topic-chooser select {
-    min-width: 220px;
-    padding: 8px 10px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font: inherit;
-    background: white;
-  }
-</style>

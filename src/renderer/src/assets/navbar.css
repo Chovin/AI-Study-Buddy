@@ -1,0 +1,102 @@
+.selector-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.selector-label {
+  font-size: 11px;
+  color: #666;
+  margin: 0;
+  line-height: 1;
+}
+
+.selector-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.disabled {
+  opacity: 0.55;
+}
+
+/* Select width */
+.selector-box .mdc-select {
+  width: 220px;
+}
+
+/* Main select box (SHORTER) */
+.selector-box .mdc-select__anchor {
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 8px 0 10px;
+  border-radius: 8px;
+}
+
+/* Remove notch gap */
+.selector-box .mdc-notched-outline__notch {
+  border: none !important;
+  border-right: none !important;
+  max-width: 0 !important;
+  width: 0 !important;
+  padding: 0 !important;
+}
+
+/* Hide floating label */
+.selector-box .mdc-floating-label {
+  display: none !important;
+}
+
+/* Keep outline clean */
+.selector-box .mdc-notched-outline {
+  border-radius: 8px;
+}
+
+/* Text alignment (fix vertical centering) */
+.selector-box .mdc-select__selected-text {
+  font-size: 13px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+/* Arrow spacing (tighter) */
+.selector-box .mdc-select__dropdown-icon {
+  right: 4px;
+}
+
+/* Prevent button wrapping */
+.selector-box .mdc-button {
+  white-space: nowrap;
+}
+
+/* Dropdown menu surface */
+.mdc-menu-surface {
+  border-radius: 8px;
+}
+
+/* Dropdown list items */
+.mdc-list-item {
+  font-size: 13px;
+  min-height: 32px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+}
+
+/* Hover state */
+.mdc-list-item:hover {
+  background: #f3f3f3;
+}
+
+/* Selected item */
+.mdc-list-item--selected {
+  background: #ececec;
+}
+
+/* Optional: tighter menu spacing */
+.mdc-list {
+  padding: 4px 0;
+}

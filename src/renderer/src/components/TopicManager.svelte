@@ -122,7 +122,6 @@
 </script>
 
 <div class="topic-manager">
-  <h2>Topics</h2>
 
   <div class="create-row">
     <div class="input-wrap">

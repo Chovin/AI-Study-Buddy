@@ -164,217 +164,232 @@
 </script>
 
 <div class="app-shell">
-  <div class="top-nav">
-    <div class="nav-left">
-      <ModelChooser
-        bind:models
-        bind:selectedModel
-        disabled={!ollamaReady}
-      />
+  <Sidebar bind:collapsed bind:active />
 
-      <TopicChooser
-        bind:this={topicChooserRef}
-        bind:selectedTopic
-      />
+  <div class="main" class:collapsed={collapsed}>
+    <div class="top-nav">
+      <div class="nav-left">
+        <ModelChooser
+          bind:models
+          bind:selectedModel
+          disabled={!ollamaReady}
+        />
+
+        <TopicChooser
+          bind:this={topicChooserRef}
+          bind:selectedTopic
+        />
+      </div>
+
+      <div class="nav-right">
+        <ProgressNotifications onProgressUpdate={handleOnProgressUpdate} />
+      </div>
     </div>
 
-    <div class="nav-right">
-      <ProgressNotifications onProgressUpdate={handleOnProgressUpdate} />
-    </div>
-  </div>
+    <div class="body-layout">
+      <main
+        class="page-content"
+        class:grid-bg={active !== 'timer'}
+      >
+        {#if active === 'topics'}
+          <section class="panel">
+            <div class="section-header">
+              <h2>Topics</h2>
+              <p>Manage your study topics and files here.</p>
+            </div>
 
-  <div class="body-layout">
-    <Sidebar bind:collapsed bind:active />
+            <div class="topic-section">
+              <TopicManager
+                bind:selectedTopic
+                on:topicsUpdated={refreshTopics}
+              />
 
-    <main class="page-content">
-      {#if active === 'topics'}
-        <section class="panel">
-          <div class="section-header">
-            <h2>Topics</h2>
-            <p>Manage your study topics and files here.</p>
-          </div>
+              {#if selectedTopic}
+                <div class="topic-files">
+                  <h3>Files in {selectedTopic.name}</h3>
 
-          <div class="topic-section">
-            <TopicManager
-              bind:selectedTopic
-              on:topicsUpdated={refreshTopics}
-            />
+                  <FileUploader
+                    {selectedTopic}
+                    on:filesUpdated={() => fetchFiles(selectedTopic.id)}
+                  />
 
-            {#if selectedTopic}
-              <div class="topic-files">
-                <h3>Files in {selectedTopic.name}</h3>
+                  <List>
+                    {#each files as file (file.id)}
+                      <Item>
+                        {file.file_name}
+                        <IconButton onclick={() => deleteFile(file.id)}>
+                          <span class="material-icons-outlined">delete</span>
+                        </IconButton>
+                      </Item>
+                    {/each}
+                  </List>
+                </div>
+              {/if}
+            </div>
+          </section>
 
-                <FileUploader
-                  {selectedTopic}
-                  on:filesUpdated={() => fetchFiles(selectedTopic.id)}
-                />
+        {:else if active === 'chat'}
+          <section class="panel">
+            <div class="section-header">
+              <h2>Chat</h2>
+              <p>Ask questions about the files in your selected topic.</p>
+            </div>
 
-                <List>
-                  {#each files as file (file.id)}
-                    <Item>
-                      {file.file_name}
-                      <IconButton onclick={() => deleteFile(file.id)}>
-                        <span class="material-icons-outlined">delete</span>
-                      </IconButton>
-                    </Item>
-                  {/each}
-                </List>
+            <div class="using-text">
+              Using {selectedModel || 'None'}
+            </div>
+
+            <div class="chat-row">
+              <Textfield
+                class="chat-input"
+                bind:value={question}
+                onkeydown={handleChatKeyDown}
+                disabled={!selectedTopic}
+              />
+              <Button onclick={sendChat} disabled={!selectedTopic}>Send</Button>
+            </div>
+
+            {#if !selectedTopic}
+              <p class="helper-text">Please select a topic first.</p>
+            {/if}
+
+            {#if responseString}
+              <div class="response-block">
+                <p>{responseString}</p>
               </div>
             {/if}
-          </div>
-        </section>
+          </section>
 
-      {:else if active === 'chat'}
-        <section class="panel">
-          <div class="section-header">
-            <h2>Chat</h2>
-            <p>Ask questions about the files in your selected topic.</p>
-          </div>
-
-          <div class="using-text">
-            Using {selectedModel || 'None'}
-          </div>
-
-          <div class="chat-row">
-            <Textfield
-              class="chat-input"
-              bind:value={question}
-              onkeydown={handleChatKeyDown}
-              disabled={!selectedTopic}
-            />
-            <Button onclick={sendChat} disabled={!selectedTopic}>Send</Button>
-          </div>
-
-          {#if !selectedTopic}
-            <p class="helper-text">Please select a topic first.</p>
-          {/if}
-
-          {#if responseString}
-            <div class="response-block">
-              <p>{responseString}</p>
+        {:else if active === 'flashcards'}
+          <section class="panel">
+            <div class="section-header">
+              <h2>Flashcards</h2>
+              <p>Generate flashcards from the selected topic and its files.</p>
             </div>
-          {/if}
-        </section>
 
-      {:else if active === 'flashcards'}
-        <section class="panel">
-          <div class="section-header">
-            <h2>Flashcards</h2>
-            <p>Generate flashcards from the selected topic and its files.</p>
-          </div>
+            <div class="using-text">
+              Using {selectedModel || 'None'}
+            </div>
 
-          <div class="using-text">
-            Using {selectedModel || 'None'}
-          </div>
+            <div class="quiz-actions">
+              <Button onclick={generateFlashcards} disabled={!selectedTopic || generatingFlashcards}>
+                Generate Flashcards
+              </Button>
 
-          <div class="quiz-actions">
-            <Button onclick={generateFlashcards} disabled={!selectedTopic || generatingFlashcards}>
-              Generate Flashcards
-            </Button>
+              <CircularProgress
+                indeterminate
+                style="height: 32px; width: 32px;"
+                closed={!generatingFlashcards}
+              />
+            </div>
 
-            <CircularProgress
-              indeterminate
-              style="height: 32px; width: 32px;"
-              closed={!generatingFlashcards}
-            />
-          </div>
+            {#if !selectedTopic}
+              <p class="helper-text">Please select a topic first.</p>
+            {/if}
 
-          {#if !selectedTopic}
-            <p class="helper-text">Please select a topic first.</p>
-          {/if}
+            <div class="flashcards-grid">
+              {#each flashcards as f, fi (fi)}
+                <div
+                  class="flashcard"
+                  on:click={() => (f.flipped = !f.flipped)}
+                >
+                  {#if f.flipped}
+                    <h3>{f.back}</h3>
+                  {:else}
+                    <h3>{f.front}</h3>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+          </section>
 
-          <div class="flashcards-grid">
-            {#each flashcards as f, fi (fi)}
-              <div
-                class="flashcard"
-                on:click={() => (f.flipped = !f.flipped)}
-              >
-                {#if f.flipped}
-                  <h3>{f.back}</h3>
-                {:else}
-                  <h3>{f.front}</h3>
-                {/if}
+        {:else if active === 'quiz'}
+          <section class="panel">
+            <div class="section-header">
+              <h2>Quiz</h2>
+              <p>Generate a quiz from the selected topic and its files.</p>
+            </div>
+
+            <div class="using-text">
+              Using {selectedModel || 'None'}
+            </div>
+
+            <div class="quiz-actions">
+              <Button onclick={generateQuiz} disabled={!selectedTopic || generating}>
+                Generate Quiz
+              </Button>
+
+              <CircularProgress
+                indeterminate
+                style="height: 32px; width: 32px;"
+                closed={!generating}
+              />
+            </div>
+
+            {#if !selectedTopic}
+              <p class="helper-text">Please select a topic first.</p>
+            {/if}
+
+            {#each quiz as q, qi (q.question)}
+              <div class="quiz-card">
+                <h3>{q.question}</h3>
+
+                <form>
+                  {#each q.choices as c, i (c)}
+                    <div
+                      class:answer={q.answered && q.answer == i}
+                      class:guessed={q.answered && q.guessed == i}
+                      class="choice-row"
+                      on:click={() => {
+                        q.guessed = i
+                        q.answered = true
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        id={`${qi}_${i}`}
+                        value={i}
+                        name={qi}
+                      />
+                      <label for={`${qi}_${i}`}>{c}</label>
+                    </div>
+                  {/each}
+                </form>
               </div>
             {/each}
-          </div>
-        </section>
+          </section>
 
-      {:else if active === 'quiz'}
-        <section class="panel">
-          <div class="section-header">
-            <h2>Quiz</h2>
-            <p>Generate a quiz from the selected topic and its files.</p>
-          </div>
-
-          <div class="using-text">
-            Using {selectedModel || 'None'}
-          </div>
-
-          <div class="quiz-actions">
-            <Button onclick={generateQuiz} disabled={!selectedTopic || generating}>
-              Generate Quiz
-            </Button>
-
-            <CircularProgress
-              indeterminate
-              style="height: 32px; width: 32px;"
-              closed={!generating}
-            />
-          </div>
-
-          {#if !selectedTopic}
-            <p class="helper-text">Please select a topic first.</p>
-          {/if}
-
-          {#each quiz as q, qi (q.question)}
-            <div class="quiz-card">
-              <h3>{q.question}</h3>
-
-              <form>
-                {#each q.choices as c, i (c)}
-                  <div
-                    class:answer={q.answered && q.answer == i}
-                    class:guessed={q.answered && q.guessed == i}
-                    class="choice-row"
-                    on:click={() => {
-                      q.guessed = i
-                      q.answered = true
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      id={`${qi}_${i}`}
-                      value={i}
-                      name={qi}
-                    />
-                    <label for={`${qi}_${i}`}>{c}</label>
-                  </div>
-                {/each}
-              </form>
+        {:else if active === 'timer'}
+          <section class="panel timer-page">
+            <div class="section-header">
+              <h2>Timer</h2>
+              <p>Use your study timer here.</p>
             </div>
-          {/each}
-        </section>
 
-      {:else if active === 'timer'}
-        <section class="panel timer-page">
-          <div class="section-header">
-            <h2>Timer</h2>
-            <p>Use your study timer here.</p>
-          </div>
-
-          <TimerPanel />
-        </section>
-      {/if}
-    </main>
+            <TimerPanel />
+          </section>
+        {/if}
+      </main>
+    </div>
   </div>
 </div>
 
 <style>
   .app-shell {
-    height: 100vh;
+    min-height: 100vh;
+    background: white;
+  }
+
+  .main {
+    margin-left: 220px;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background: white;
+    transition: margin-left 0.25s ease;
+  }
+
+  .main.collapsed {
+    margin-left: 72px;
   }
 
   .top-nav {
@@ -383,7 +398,7 @@
     justify-content: space-between;
     width: 100%;
     padding: 10px 16px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 2px solid #5d80c4;
     background: white;
     box-sizing: border-box;
     gap: 16px;
@@ -417,6 +432,15 @@
     overflow: auto;
     padding: 24px;
     box-sizing: border-box;
+    background-color: #ffffff;
+  }
+
+  .grid-bg {
+    background-image:
+      linear-gradient(#b7d4ec 1px, transparent 1px),
+      linear-gradient(90deg, #b7d4ec 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position: 20px 0; 
   }
 
   .panel {
