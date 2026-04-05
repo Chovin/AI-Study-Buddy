@@ -36,6 +36,11 @@
   let flashcards = $state([])
   let generatingFlashcards = $state(false)
 
+  let quickSummary = $state('')
+  let detailedSummary = $state('')
+  let generatingQuickSummary = $state(false)
+  let generatingDetailedSummary = $state(false)
+
   let topicChooserRef
   let topicsSearch = $state('')
 
@@ -162,6 +167,52 @@
       generatingFlashcards = false
     }
   }
+
+  const generateQuickSummary = async () => {
+    if (generatingQuickSummary) return
+    generatingQuickSummary = true
+
+    if (!selectedTopic) throw new Error('No topic selected')
+
+    try {
+      quickSummary = await window.api.generateQuickSummary(
+        selectedModel,
+        selectedTopic.id,
+        files.map(f => f.id)
+      )
+    } catch (error) {
+      responseString = error.message
+      setTimeout(() => {
+        responseString = ''
+      }, 10_000)
+      throw error
+    } finally {
+      generatingQuickSummary = false
+    }
+  }
+
+  const generateDetailedSummary = async () => {
+    if (generatingDetailedSummary) return
+    generatingDetailedSummary = true
+
+    if (!selectedTopic) throw new Error('No topic selected')
+
+    try {
+      detailedSummary = await window.api.generateDetailedSummary(
+        selectedModel,
+        selectedTopic.id,
+        files.map(f => f.id)
+      )
+    } catch (error) {
+      responseString = error.message
+      setTimeout(() => {
+        responseString = ''
+      }, 10_000)
+      throw error
+    } finally {
+      generatingDetailedSummary = false
+    }
+  }
 </script>
 
 <div class="app-shell">
@@ -273,6 +324,58 @@
             {#if responseString}
               <div class="response-block">
                 <p>{responseString}</p>
+              </div>
+            {/if}
+          </section>
+
+        {:else if active === 'summary'}
+          <section class="panel">
+            <div class="section-header">
+              <h2>Summary</h2>
+              <p>Generate quick or detailed summaries from the selected topic and its files.</p>
+            </div>
+
+            <div class="using-text">
+              Using {selectedModel || 'None'}
+            </div>
+
+            <div class="summary-actions">
+              <Button onclick={generateQuickSummary} disabled={!selectedTopic || generatingQuickSummary}>
+                Generate Quick Summary
+              </Button>
+
+              <CircularProgress
+                indeterminate
+                style="height: 32px; width: 32px;"
+                closed={!generatingQuickSummary}
+              />
+
+              <Button onclick={generateDetailedSummary} disabled={!selectedTopic || generatingDetailedSummary}>
+                Generate Detailed Summary
+              </Button>
+
+              <CircularProgress
+                indeterminate
+                style="height: 32px; width: 32px;"
+                closed={!generatingDetailedSummary}
+              />
+            </div>
+
+            {#if !selectedTopic}
+              <p class="helper-text">Please select a topic first.</p>
+            {/if}
+
+            {#if quickSummary}
+              <div class="summary-block">
+                <h3>Quick Summary</h3>
+                <div>{@html quickSummary.replace(/\n/g, '<br>')}</div>
+              </div>
+            {/if}
+
+            {#if detailedSummary}
+              <div class="summary-block">
+                <h3>Detailed Summary</h3>
+                <div>{@html detailedSummary.replace(/\n/g, '<br>')}</div>
               </div>
             {/if}
           </section>
@@ -486,24 +589,6 @@
     gap: 22px;
   }
 
-  .topics-search-row {
-    display: flex;
-    align-items: center;
-  }
-
-  .topics-search-input {
-    width: 100%;
-    max-width: 520px;
-    height: 44px;
-    padding: 0 14px;
-    border: 1px solid #bcbcbc;
-    border-radius: 0;
-    outline: none;
-    font: inherit;
-    background: white;
-    box-sizing: border-box;
-  }
-
   .topics-block,
   .files-block {
     display: flex;
@@ -577,12 +662,26 @@
     flex: 1 1 auto;
   }
 
-  .response-block {
+  .response-block,
+  .summary-block {
     margin-top: 16px;
     padding: 16px;
     border: 1px solid #ddd;
     border-radius: 12px;
     background: #fafafa;
+  }
+
+  .summary-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .summary-block h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
   }
 
   .quiz-actions {

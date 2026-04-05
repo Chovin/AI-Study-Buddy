@@ -1,13 +1,14 @@
 <script>
-  import { Home, ListCheck, MessageSquare, Clock3,  SwatchBook, PanelLeftClose, PanelLeftOpen } from 'lucide-svelte'
+  import { Folder, ListCheck, MessageSquare, Clock3,  SwatchBook, NotepadText, PanelLeftClose, PanelLeftOpen } from 'lucide-svelte'
 
   export let collapsed = false
   export let active = 'topics'
 
   const items = [
-  { id: 'topics', label: 'Topics', icon: Home },
+  { id: 'topics', label: 'Topics', icon: Folder },
   { id: 'quiz', label: 'Quiz', icon: ListCheck },
   { id: 'flashcards', label: 'Flashcards', icon: SwatchBook },
+  { id: 'summary', label: 'Summary', icon: NotepadText },
   { id: 'chat', label: 'Chat', icon: MessageSquare },
   { id: 'timer', label: 'Timer', icon: Clock3 }
 ]
