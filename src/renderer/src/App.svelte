@@ -37,6 +37,7 @@
   let generatingFlashcards = $state(false)
 
   let topicChooserRef
+  let topicsSearch = $state('')
 
   $effect(async () => {
     if (selectedTopic) {
@@ -192,39 +193,55 @@
         class:grid-bg={active !== 'timer'}
       >
         {#if active === 'topics'}
-          <section class="panel">
-            <div class="section-header">
-              <h2>Topics</h2>
-              <p>Manage your study topics and files here.</p>
+          <section class="topics-page">
+            <div class="topics-block">
+              <h2 class="topics-block-title">Topics</h2>
+
+              <div class="topics-card">
+                <div class="topics-card-scroll">
+                  <TopicManager
+                    bind:selectedTopic
+                    on:topicsUpdated={refreshTopics}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div class="topic-section">
-              <TopicManager
-                bind:selectedTopic
-                on:topicsUpdated={refreshTopics}
-              />
+            <div class="files-block">
+              <div class="files-title-row">
+                <h2 class="files-block-title">Files :</h2>
+                <span class="files-topic-name">
+                  {selectedTopic?.name || 'No topic selected'}
+                </span>
+              </div>
 
-              {#if selectedTopic}
-                <div class="topic-files">
-                  <h3>Files in {selectedTopic.name}</h3>
+              <div class="files-card">
+                <div class="files-card-scroll">
+                  {#if selectedTopic}
+                    <FileUploader
+                      {selectedTopic}
+                      on:filesUpdated={() => fetchFiles(selectedTopic.id)}
+                    />
 
-                  <FileUploader
-                    {selectedTopic}
-                    on:filesUpdated={() => fetchFiles(selectedTopic.id)}
-                  />
+                    <div class="uploaded-files-section">
+                      <h3>Uploaded Files</h3>
 
-                  <List>
-                    {#each files as file (file.id)}
-                      <Item>
-                        {file.file_name}
-                        <IconButton onclick={() => deleteFile(file.id)}>
-                          <span class="material-icons-outlined">delete</span>
-                        </IconButton>
-                      </Item>
-                    {/each}
-                  </List>
+                      <List>
+                        {#each files as file (file.id)}
+                          <Item>
+                            {file.file_name}
+                            <IconButton onclick={() => deleteFile(file.id)}>
+                              <span class="material-icons-outlined">delete</span>
+                            </IconButton>
+                          </Item>
+                        {/each}
+                      </List>
+                    </div>
+                  {:else}
+                    <p class="helper-text">Please select a topic first.</p>
+                  {/if}
                 </div>
-              {/if}
+              </div>
             </div>
           </section>
 
@@ -440,7 +457,7 @@
       linear-gradient(#b7d4ec 1px, transparent 1px),
       linear-gradient(90deg, #b7d4ec 1px, transparent 1px);
     background-size: 40px 40px;
-    background-position: 20px 0; 
+    background-position: 20px 0;
   }
 
   .panel {
@@ -460,6 +477,87 @@
     margin: 0;
     color: #666;
     font-size: 14px;
+  }
+
+  .topics-page {
+    max-width: 860px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .topics-search-row {
+    display: flex;
+    align-items: center;
+  }
+
+  .topics-search-input {
+    width: 100%;
+    max-width: 520px;
+    height: 44px;
+    padding: 0 14px;
+    border: 1px solid #bcbcbc;
+    border-radius: 0;
+    outline: none;
+    font: inherit;
+    background: white;
+    box-sizing: border-box;
+  }
+
+  .topics-block,
+  .files-block {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .topics-block-title,
+  .files-block-title {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .files-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .files-topic-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #9ebfb9;
+  }
+
+  .topics-card,
+  .files-card {
+    background: rgba(255, 255, 255, 0.94);
+    border: 1.5px solid #2f2f2f;
+    border-radius: 48px;
+    min-height: 420px;
+    padding: 28px 26px;
+    box-sizing: border-box;
+  }
+
+  .files-card {
+    min-height: 380px;
+  }
+
+  .topics-card-scroll,
+  .files-card-scroll {
+    max-height: 100%;
+    overflow: auto;
+  }
+
+  .uploaded-files-section {
+    margin-top: 24px;
+  }
+
+  .uploaded-files-section h3 {
+    margin: 0 0 14px 0;
+    font-size: 16px;
   }
 
   .using-text {
@@ -492,14 +590,6 @@
     align-items: center;
     gap: 12px;
     margin-bottom: 16px;
-  }
-
-  .topic-section {
-    margin-top: 12px;
-  }
-
-  .topic-files {
-    margin-top: 20px;
   }
 
   .helper-text {

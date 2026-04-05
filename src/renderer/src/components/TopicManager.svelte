@@ -1,7 +1,7 @@
 <script>
   import { onMount, createEventDispatcher, tick } from 'svelte'
-  import Button from '@smui/button'
   import IconButton from '@smui/icon-button'
+  import { Folder, Pencil, Trash2, Check, X, CirclePlus } from 'lucide-svelte'
 
   export let selectedTopic = null
 
@@ -41,14 +41,10 @@
 
     if (createdTopic?.id) {
       const found = topics.find(topic => topic.id === createdTopic.id)
-      if (found) {
-        selectedTopic = found
-      }
+      if (found) selectedTopic = found
     } else {
       const found = topics.find(topic => topic.name === name)
-      if (found) {
-        selectedTopic = found
-      }
+      if (found) selectedTopic = found
     }
 
     notifyTopicsUpdated()
@@ -80,15 +76,11 @@
   }
 
   async function deleteTopic(topic) {
-    if (!confirm(`Are you sure you want to delete the topic "${topic.name}" and all its files?`)) {
-      return
-    }
+    if (!confirm(`Are you sure you want to delete "${topic.name}"?`)) return
 
     await window.api.deleteTopic(topic.id)
 
-    if (selectedTopic?.id === topic.id) {
-      selectedTopic = null
-    }
+    if (selectedTopic?.id === topic.id) selectedTopic = null
 
     editingTopicId = null
     editingTopicName = ''
@@ -103,178 +95,170 @@
   }
 
   async function handleEditKeyDown(event) {
-    if (event.key === 'Enter') {
-      await saveEditTopic()
-    } else if (event.key === 'Escape') {
-      cancelEdit()
-    }
+    if (event.key === 'Enter') await saveEditTopic()
+    else if (event.key === 'Escape') cancelEdit()
   }
 
   async function handleCreateKeyDown(event) {
-    if (event.key === 'Enter') {
-      await createTopic()
-    }
+    if (event.key === 'Enter') await createTopic()
   }
 
-  onMount(async () => {
-    await fetchTopics()
-  })
+  onMount(fetchTopics)
 </script>
 
 <div class="topic-manager">
-
   <div class="create-row">
-    <div class="input-wrap">
-      <label for="new-topic">New Topic</label>
-      <input
-        id="new-topic"
-        type="text"
-        bind:value={newTopic}
-        onkeydown={handleCreateKeyDown}
-        placeholder="Enter topic name"
-      />
-    </div>
+    <input
+      type="text"
+      bind:value={newTopic}
+      onkeydown={handleCreateKeyDown}
+      placeholder="Add New Topic"
+      class="create-input"
+    />
 
-    <Button onclick={createTopic} raised>Create Topic</Button>
+    <button class="add-btn" onclick={createTopic} aria-label="Create Topic">
+      <CirclePlus size={32} />
+    </button>
   </div>
 
- <div class="topics-list">
-  {#each topics as topic (topic.id)}
-    {#if editingTopicId === topic.id}
-      <div class="topic-row editing-row">
-        <input
-          type="text"
-          bind:value={editingTopicName}
-          onkeydown={handleEditKeyDown}
-          bind:this={editInputRef}
-          class="edit-input"
-        />
+  <div class="topics-list">
+    {#each topics as topic (topic.id)}
+      {#if editingTopicId === topic.id}
+        <div class="topic-row editing-row">
+          <Folder size={22} class="folder-icon" />
 
-        <IconButton onclick={saveEditTopic}>
-          <span class="material-icons-outlined">save</span>
-        </IconButton>
+          <input
+            type="text"
+            bind:value={editingTopicName}
+            onkeydown={handleEditKeyDown}
+            bind:this={editInputRef}
+            class="edit-input"
+          />
 
-        <IconButton onclick={cancelEdit}>
-          <span class="material-icons-outlined">cancel</span>
-        </IconButton>
-      </div>
-    {:else}
-      <div
-        class="topic-row clickable-row"
-        class:selected-row={selectedTopic?.id === topic.id}
-        onclick={() => selectTopic(topic)}
-      >
-        <span class="topic-name">
-          {topic.name}
-        </span>
+          <div class="topic-actions">
+            <IconButton onclick={saveEditTopic}>
+              <Check size={18} />
+            </IconButton>
 
-        <div class="topic-actions">
-          <IconButton
-            onclick={(event) => {
-              event.stopPropagation()
-              startEdit(topic)
-            }}
-          >
-            <span class="material-icons-outlined">edit</span>
-          </IconButton>
-
-          <IconButton
-            onclick={(event) => {
-              event.stopPropagation()
-              deleteTopic(topic)
-            }}
-          >
-            <span class="material-icons-outlined">delete</span>
-          </IconButton>
+            <IconButton onclick={cancelEdit}>
+              <X size={18} />
+            </IconButton>
+          </div>
         </div>
-      </div>
-    {/if}
-  {/each}
-</div>
+      {:else}
+        <div
+          class="topic-row clickable-row"
+          class:selected-row={selectedTopic?.id === topic.id}
+          onclick={() => selectTopic(topic)}
+        >
+          <div class="topic-left">
+            <Folder size={22} class="folder-icon" />
+            <span class="topic-name">{topic.name}</span>
+          </div>
+
+          <div class="topic-actions">
+            <IconButton onclick={(e) => { e.stopPropagation(); startEdit(topic) }}>
+              <Pencil size={18} />
+            </IconButton>
+
+            <IconButton onclick={(e) => { e.stopPropagation(); deleteTopic(topic) }}>
+              <Trash2 size={18} />
+            </IconButton>
+          </div>
+        </div>
+      {/if}
+    {/each}
+  </div>
 </div>
 
 <style>
   .topic-manager {
-    padding: 0;
-  }
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
 
   .create-row {
     display: flex;
-    align-items: flex-end;
-    gap: 16px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 22px;
   }
 
-  .input-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 280px;
-  }
-
-  .input-wrap label {
-    font-size: 14px;
-    color: #666;
-  }
-
-  .input-wrap input,
-  .edit-input {
-    border: none;
-    border-bottom: 1px solid #999;
-    outline: none;
-    padding: 8px 0;
+  .create-input {
+    flex: 1;
+    height: 46px;
+    border: 1.5px solid #4a4a4a;
+    border-radius: 8px;
+    padding: 0 14px;
     font: inherit;
-    background: transparent;
   }
 
-  .input-wrap input:focus,
+  .create-input:focus,
   .edit-input:focus {
-    border-bottom: 2px solid #ff5a1f;
+    border-color: #5d80c4;
+  }
+
+  .add-btn {
+    border: none;
+    background: transparent;
+    color: #5d80c4;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .add-btn:hover {
+    opacity: 0.8;
   }
 
   .topics-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 12px;
+    gap: 10px;
   }
 
   .topic-row {
-    width: 100%;
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 12px 14px;
-    border-radius: 10px;
-    box-sizing: border-box;
+    align-items: center;
+    padding: 10px 8px;
+    border-radius: 14px;
   }
 
-  .clickable-row {
-    cursor: pointer;
+  .topic-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
   }
 
   .clickable-row:hover {
-    background: #f3f3f3;
+    background: rgba(158, 191, 185, 0.12);
   }
 
   .selected-row {
-    background: #ececec;
+    background: rgba(158, 191, 185, 0.18);
   }
 
-  .editing-row {
-    justify-content: flex-start;
+  .folder-icon {
+    color: #5d80c4;
   }
 
   .topic-name {
-    font: inherit;
-    text-align: left;
+    font-size: 18px;
+  }
+
+  .edit-input {
+    flex: 1;
+    height: 42px;
+    border: 1.5px solid #4a4a4a;
+    border-radius: 8px;
+    padding: 0 12px;
   }
 
   .topic-actions {
     display: flex;
-    align-items: center;
-    gap: 4px;
+    gap: 2px;
   }
 </style>
