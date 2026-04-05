@@ -30,6 +30,10 @@
 
   --color-text: var(--ev-c-text-1);
 }
+
+html, body {
+  font-family: 'Poppins', sans-serif;
+}
 /* 
 *,
 *::before,

@@ -1,47 +1,48 @@
 <script>
   import Select, { Option } from '@smui/select';
   import Button from '@smui/button';
-  import { untrack } from "svelte";
+  import { untrack } from 'svelte';
 
-  // for some reason models needs to be bindable in order for the parent to update it in here
-  let { models = $bindable({}), selectedModel = $bindable('') } = $props();
+  let {
+    models = $bindable({}),
+    selectedModel = $bindable(''),
+    disabled = false
+  } = $props();
 
   let modelToDownload = $state('');
 
-  // alphabetically sorted model list
   let modelList = $derived.by(() => {
-    let keys = Object.keys(models);
-    // actually makes more sense to keep them sorted like the ollama app
-    // keys.sort();
-    return keys
-  })
+    return Object.keys(models);
+  });
 
   $effect(() => {
-    // handle parent changing selectedModel
-    let mtd = untrack(() => modelToDownload)
-    let ms = untrack(() => models)
-    
+    let mtd = untrack(() => modelToDownload);
+    let ms = untrack(() => models);
+
     if (selectedModel != mtd && ms[selectedModel]?.installed) {
-      modelToDownload = selectedModel
+      modelToDownload = selectedModel;
     }
-  })
+  });
 
   function handleModelChange() {
-    if (models[modelToDownload].installed) {
-      selectedModel = modelToDownload
+    if (disabled) return;
+
+    if (models[modelToDownload]?.installed) {
+      selectedModel = modelToDownload;
     }
   }
 
   async function handleModelDownload() {
-    let downloadingModel = modelToDownload
+    if (disabled || !modelToDownload) return;
+
+    let downloadingModel = modelToDownload;
 
     try {
       let success = await window.api.downloadModel(modelToDownload);
-      
-      if (success) {
 
+      if (success) {
         if (downloadingModel === modelToDownload) {
-          selectedModel = modelToDownload
+          selectedModel = modelToDownload;
         }
 
         alert('Model downloaded successfully');
@@ -50,17 +51,34 @@
       alert('Error downloading model: ' + error.message);
     }
   }
-
 </script>
 
-<div class="model-selector">
-<Select bind:value={modelToDownload} label="Select Ollama Model" onSMUISelectChange={handleModelChange}>
-    {#each modelList as model (model)}
-    <Option value={model}>{model} ({models[model].size})</Option>
-    {/each}
-</Select>
-{#if !models[modelToDownload]?.installed}
-    <Button onclick={handleModelDownload} raised>Download</Button>
-{/if}
+<div class="selector-wrap" class:disabled>
+  <div class="selector-label">Select Model</div>
+
+  <div class="selector-box">
+    <Select
+      bind:value={modelToDownload}
+      label=""
+      variant="outlined"
+      disabled={disabled}
+      on:SMUISelectChange={handleModelChange}
+    >
+      {#if modelList.length === 0}
+        <Option value="" disabled>Loading models...</Option>
+      {:else}
+        {#each modelList as model (model)}
+          <Option value={model}>
+            {model} ({models[model].size})
+          </Option>
+        {/each}
+      {/if}
+    </Select>
+
+    {#if modelToDownload && !models[modelToDownload]?.installed}
+      <Button on:click={handleModelDownload} raised disabled={disabled}>
+        Download
+      </Button>
+    {/if}
+  </div>
 </div>
-<div>Using {selectedModel}</div>
