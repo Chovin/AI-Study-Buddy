@@ -90,6 +90,15 @@ $ npm run build:mac
 $ npm run build:linux
 ```
 
+the executable will appear in the `dist` folder. 
+
+#### Troubleshooting
+
+If the app doesn't pop up when you open it, you may need to close it and reopen it again. Not sure why
+Potentially, this might just be a Mac thing and is happening because we didn't sign the app yet. If the app still doesn't open, try opening it from the terminal `./dist/mac-arm64/ai-study-buddy.app/Contents/MacOS/ai-study-buddy`. Future attempts to open it by double clicking on the app should open it now.
+
+You might need to remove the `dist` and `out` folders first before you rebuild.
+
 ## Architecture
 
 ### Backend
