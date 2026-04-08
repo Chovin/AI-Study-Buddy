@@ -280,6 +280,7 @@ Instructions:
 - Each question must have exactly 4 choices.
 - Only one correct answer.
 - The "answer" must be the index (0–3).
+- Provide a brief explanation for why the correct answer is correct.
 - Don't make repeat any of the questions.
 - Ensure the correctness of the answer and make sure the incorrect answers are actually incorrect.
 - Ensure the question content is actually discussed in the provided context.
@@ -300,7 +301,8 @@ Format:
       "<choice 3>", 
       "<choice 4>"
     ],
-    "answer": 1
+    "answer": 1,
+    "explanation": "<brief explanation for the correct answer>"
   },
   {
     "question": "<question2 text>",
@@ -310,7 +312,8 @@ Format:
       "<choice 3>", 
       "<choice 4>"
     ],
-    "answer": 0
+    "answer": 0,
+    "explanation": "<brief explanation for the correct answer>"
   }
 ]
         ` },
@@ -337,8 +340,8 @@ Format:
       throw new Error("Incorrectly formatted quiz")
     }
     const quiz = JSON.parse(response)
-    if (quiz.some(q => !q.question.trim()) || quiz.some(q => q.choices.some(v => !v.trim()))) {
-      throw new Error("Empty question or answers")
+    if (quiz.some(q => !q.question.trim()) || quiz.some(q => q.choices.some(v => !v.trim())) || quiz.some(q => !q.explanation.trim())) {
+      throw new Error("Empty question, answers, or explanation")
     }
     return quiz
   } catch (err) {

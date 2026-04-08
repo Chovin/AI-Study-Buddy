@@ -475,6 +475,12 @@
                     </div>
                   {/each}
                 </form>
+
+                {#if q.answered}
+                  <div class="explanation">
+                    <p><strong>Explanation:</strong> {q.explanation}</p>
+                  </div>
+                {/if}
               </div>
             {/each}
           </section>
@@ -760,5 +766,19 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .explanation {
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #f9f9f9;
+  }
+
+  .explanation p {
+    margin: 0;
+    font-size: 14px;
+    color: #333;
   }
 </style>
