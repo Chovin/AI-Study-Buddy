@@ -607,6 +607,7 @@
     margin: 0;
     font-size: 28px;
     font-weight: 700;
+    padding-left: 20px;
   }
 
   .files-title-row {
@@ -617,16 +618,16 @@
   }
 
   .files-topic-name {
-    font-size: 16px;
+    font-size: 30px;
     font-weight: 600;
-    color: #9ebfb9;
+    color: #ec5f54;
   }
 
   .topics-card,
   .files-card {
     background: rgba(255, 255, 255, 0.94);
     border: 1.5px solid #2f2f2f;
-    border-radius: 48px;
+    border-radius: 20px;
     min-height: 420px;
     padding: 28px 26px;
     box-sizing: border-box;
