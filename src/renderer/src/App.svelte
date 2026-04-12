@@ -7,6 +7,7 @@
   import TopicChooser from './components/TopicChooser.svelte'
   import ProgressNotifications from './components/ProgressNotifications.svelte'
   import TimerPanel from './components/TimerPanel.svelte'
+  import FloatingTimer from './components/FloatingTimer.svelte'
 
   import List, { Item } from '@smui/list'
   import Button from '@smui/button'
@@ -243,6 +244,10 @@
         class="page-content"
         class:grid-bg={active !== 'timer'}
       >
+        {#if active !== 'timer'}
+          <FloatingTimer />
+        {/if}
+
         {#if active === 'topics'}
           <section class="topics-page">
             <div class="topics-block">
@@ -411,7 +416,7 @@
               {#each flashcards as f, fi (fi)}
                 <div
                   class="flashcard"
-                  on:click={() => (f.flipped = !f.flipped)}
+                  onclick={() => (f.flipped = !f.flipped)}
                 >
                   {#if f.flipped}
                     <h3>{f.back}</h3>
@@ -460,7 +465,7 @@
                       class:answer={q.answered && q.answer == i}
                       class:guessed={q.answered && q.guessed == i}
                       class="choice-row"
-                      on:click={() => {
+                      onclick={() => {
                         q.guessed = i
                         q.answered = true
                       }}
@@ -553,6 +558,7 @@
   }
 
   .page-content {
+    position: relative;
     flex: 1;
     min-width: 0;
     overflow: auto;

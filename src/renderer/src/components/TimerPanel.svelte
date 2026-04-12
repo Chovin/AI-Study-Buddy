@@ -1,126 +1,10 @@
 <script>
-  import { onDestroy } from 'svelte';
+  import { timerStore } from '../../../main/timerStore.js';
   import { Play, Pause, RotateCcw, ChevronUp, ChevronDown } from 'lucide-svelte';
-
-  const timerSeconds = 25 * 60;
-  const pomodoroWorkSeconds = 25 * 60;
-  const pomodoroBreakSeconds = 5 * 60;
-
-  let mode = 'timer';
-
-  let isRunning = false;
-  let intervalId = null;
-
-  let timerValue = timerSeconds;
-  let pomodoroTimeLeft = pomodoroWorkSeconds;
-  let stopwatchSeconds = 0;
-  let isBreak = false;
 
   let editHours = '00';
   let editMinutes = '25';
   let editSeconds = '00';
-
-  function formatTime(seconds) {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    return [
-      String(hrs).padStart(2, '0'),
-      String(mins).padStart(2, '0'),
-      String(secs).padStart(2, '0')
-    ].join(':');
-  }
-
-  function clearTimerInterval() {
-    if (intervalId) {
-      clearInterval(intervalId);
-      intervalId = null;
-    }
-  }
-
-  function startTimer() {
-    if (isRunning) return;
-
-    isRunning = true;
-    clearTimerInterval();
-
-    intervalId = setInterval(() => {
-      if (mode === 'stopwatch') {
-        stopwatchSeconds += 1;
-        return;
-      }
-
-      if (mode === 'timer') {
-        if (timerValue > 0) {
-          timerValue -= 1;
-        } else {
-          pauseTimer();
-        }
-        return;
-      }
-
-      if (pomodoroTimeLeft > 0) {
-        pomodoroTimeLeft -= 1;
-      } else if (isBreak) {
-        isBreak = false;
-        pomodoroTimeLeft = pomodoroWorkSeconds;
-      } else {
-        isBreak = true;
-        pomodoroTimeLeft = pomodoroBreakSeconds;
-      }
-    }, 1000);
-  }
-
-  function pauseTimer() {
-    isRunning = false;
-    clearTimerInterval();
-  }
-
-  function toggleStartPause() {
-    if (isRunning) {
-      pauseTimer();
-    } else {
-      startTimer();
-    }
-  }
-
-  function resetTimer() {
-    pauseTimer();
-
-    if (mode === 'stopwatch') {
-      stopwatchSeconds = 0;
-      return;
-    }
-
-    if (mode === 'timer') {
-      timerValue = timerSeconds;
-      syncInputsFromTimer();
-      return;
-    }
-
-    isBreak = false;
-    pomodoroTimeLeft = pomodoroWorkSeconds;
-  }
-
-  function setMode(nextMode) {
-    pauseTimer();
-    mode = nextMode;
-
-    if (mode === 'stopwatch') {
-      stopwatchSeconds = 0;
-      return;
-    }
-
-    if (mode === 'timer') {
-      timerValue = timerSeconds;
-      syncInputsFromTimer();
-      return;
-    }
-
-    isBreak = false;
-    pomodoroTimeLeft = pomodoroWorkSeconds;
-  }
 
   function wrap(value, min, max) {
     if (value > max) return min;
@@ -129,9 +13,10 @@
   }
 
   function syncInputsFromTimer() {
-    const hours = Math.floor(timerValue / 3600);
-    const minutes = Math.floor((timerValue % 3600) / 60);
-    const seconds = timerValue % 60;
+    const total = $timerStore?.timerValue ?? 0;
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
 
     editHours = String(hours).padStart(2, '0');
     editMinutes = String(minutes).padStart(2, '0');
@@ -143,13 +28,12 @@
     const minutes = Math.max(0, Math.min(59, Number(editMinutes) || 0));
     const seconds = Math.max(0, Math.min(59, Number(editSeconds) || 0));
 
-    timerValue = hours * 3600 + minutes * 60 + seconds;
+    timerStore.setTimerValue(hours * 3600 + minutes * 60 + seconds);
     syncInputsFromTimer();
   }
 
   function handleTypedInput(part, event) {
-    let value = event.currentTarget.value.replace(/\D/g, '');
-    value = value.slice(0, 2);
+    let value = event.currentTarget.value.replace(/\D/g, '').slice(0, 2);
 
     if (part === 'hours') editHours = value;
     if (part === 'minutes') editMinutes = value;
@@ -157,7 +41,7 @@
   }
 
   function commitTypedInput() {
-    if (mode !== 'timer' || isRunning) return;
+    if ($timerStore.mode !== 'timer' || $timerStore.isRunning) return;
     applyInputsToTimer();
   }
 
@@ -169,92 +53,76 @@
   }
 
   function adjustHours(amount) {
-    if (mode !== 'timer' || isRunning) return;
+    if ($timerStore.mode !== 'timer' || $timerStore.isRunning) return;
 
-    let hours = Math.floor(timerValue / 3600);
-    const minutes = Math.floor((timerValue % 3600) / 60);
-    const seconds = timerValue % 60;
+    const total = $timerStore.timerValue ?? 0;
+    let hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
 
     hours = wrap(hours + amount, 0, 99);
-    timerValue = hours * 3600 + minutes * 60 + seconds;
+    timerStore.setTimerValue(hours * 3600 + minutes * 60 + seconds);
     syncInputsFromTimer();
   }
 
   function adjustMinutes(amount) {
-    if (mode !== 'timer' || isRunning) return;
+    if ($timerStore.mode !== 'timer' || $timerStore.isRunning) return;
 
-    const hours = Math.floor(timerValue / 3600);
-    let minutes = Math.floor((timerValue % 3600) / 60);
-    const seconds = timerValue % 60;
+    const total = $timerStore.timerValue ?? 0;
+    const hours = Math.floor(total / 3600);
+    let minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
 
     minutes = wrap(minutes + amount, 0, 59);
-    timerValue = hours * 3600 + minutes * 60 + seconds;
+    timerStore.setTimerValue(hours * 3600 + minutes * 60 + seconds);
     syncInputsFromTimer();
   }
 
   function adjustSeconds(amount) {
-    if (mode !== 'timer' || isRunning) return;
+    if ($timerStore.mode !== 'timer' || $timerStore.isRunning) return;
 
-    const hours = Math.floor(timerValue / 3600);
-    const minutes = Math.floor((timerValue % 3600) / 60);
-    let seconds = timerValue % 60;
+    const total = $timerStore.timerValue ?? 0;
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    let seconds = total % 60;
 
     seconds = wrap(seconds + amount, 0, 59);
-    timerValue = hours * 3600 + minutes * 60 + seconds;
+    timerStore.setTimerValue(hours * 3600 + minutes * 60 + seconds);
     syncInputsFromTimer();
   }
 
-  $: displaySeconds =
-    mode === 'stopwatch'
-      ? stopwatchSeconds
-      : mode === 'pomodoro'
-        ? pomodoroTimeLeft
-        : timerValue;
+  $: displaySeconds = timerStore.getDisplaySeconds($timerStore);
+  $: displayTime = timerStore.formatTime(displaySeconds);
+  $: timeParts = displayTime.split(':');
+  $: timerTitle = timerStore.getFloatingTitle($timerStore);
 
-  $: modeLabel =
-    mode === 'stopwatch'
-      ? 'Stopwatch'
-      : mode === 'pomodoro'
-        ? (isBreak ? 'Break Time' : 'Pomodoro')
-        : 'Timer';
-
-  $: timeParts = formatTime(displaySeconds).split(':');
-
-  $: if (mode === 'timer' && !isRunning) {
+  $: if ($timerStore.mode === 'timer' && !$timerStore.isRunning) {
     syncInputsFromTimer();
   }
-
-  onDestroy(() => {
-    clearTimerInterval();
-  });
 </script>
 
 <div class="timer-shell">
   <div class="timer-tabs">
-    <button class:active={mode === 'timer'} onclick={() => setMode('timer')}>
+    <button class:active={$timerStore.mode === 'timer'} onclick={() => timerStore.setMode('timer')}>
       Timer
     </button>
-    <button class:active={mode === 'pomodoro'} onclick={() => setMode('pomodoro')}>
+    <button class:active={$timerStore.mode === 'pomodoro'} onclick={() => timerStore.setMode('pomodoro')}>
       Pomodoro
     </button>
-    <button class:active={mode === 'stopwatch'} onclick={() => setMode('stopwatch')}>
+    <button class:active={$timerStore.mode === 'stopwatch'} onclick={() => timerStore.setMode('stopwatch')}>
       Stopwatch
     </button>
   </div>
 
-  <div class="timer-label">{modeLabel}</div>
+  <div class="timer-label">{timerTitle}</div>
 
   <div class="time-editor">
     <div class="time-group">
-      <button
-        class="arrow-btn"
-        onclick={() => adjustHours(1)}
-        disabled={mode !== 'timer' || isRunning}
-      >
+      <button class="arrow-btn" onclick={() => adjustHours(1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
         <ChevronUp size={26} />
       </button>
 
-      {#if mode === 'timer' && !isRunning}
+      {#if $timerStore.mode === 'timer' && !$timerStore.isRunning}
         <input
           class="time-input"
           type="text"
@@ -269,11 +137,7 @@
         <div class="time-display">{timeParts[0]}</div>
       {/if}
 
-      <button
-        class="arrow-btn"
-        onclick={() => adjustHours(-1)}
-        disabled={mode !== 'timer' || isRunning}
-      >
+      <button class="arrow-btn" onclick={() => adjustHours(-1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
         <ChevronDown size={26} />
       </button>
     </div>
@@ -281,15 +145,11 @@
     <div class="colon">:</div>
 
     <div class="time-group">
-      <button
-        class="arrow-btn"
-        onclick={() => adjustMinutes(1)}
-        disabled={mode !== 'timer' || isRunning}
-      >
+      <button class="arrow-btn" onclick={() => adjustMinutes(1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
         <ChevronUp size={26} />
       </button>
 
-      {#if mode === 'timer' && !isRunning}
+      {#if $timerStore.mode === 'timer' && !$timerStore.isRunning}
         <input
           class="time-input"
           type="text"
@@ -304,11 +164,7 @@
         <div class="time-display">{timeParts[1]}</div>
       {/if}
 
-      <button
-        class="arrow-btn"
-        onclick={() => adjustMinutes(-1)}
-        disabled={mode !== 'timer' || isRunning}
-      >
+      <button class="arrow-btn" onclick={() => adjustMinutes(-1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
         <ChevronDown size={26} />
       </button>
     </div>
@@ -316,15 +172,11 @@
     <div class="colon">:</div>
 
     <div class="time-group">
-      <button
-        class="arrow-btn"
-        onclick={() => adjustSeconds(1)}
-        disabled={mode !== 'timer' || isRunning}
-      >
+      <button class="arrow-btn" onclick={() => adjustSeconds(1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
         <ChevronUp size={26} />
       </button>
 
-      {#if mode === 'timer' && !isRunning}
+      {#if $timerStore.mode === 'timer' && !$timerStore.isRunning}
         <input
           class="time-input"
           type="text"
@@ -339,26 +191,22 @@
         <div class="time-display">{timeParts[2]}</div>
       {/if}
 
-      <button
-        class="arrow-btn"
-        onclick={() => adjustSeconds(-1)}
-        disabled={mode !== 'timer' || isRunning}
-      >
+      <button class="arrow-btn" onclick={() => adjustSeconds(-1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
         <ChevronDown size={26} />
       </button>
     </div>
   </div>
 
   <div class="timer-actions">
-    <button class="action-btn" onclick={toggleStartPause}>
-      {#if isRunning}
+    <button class="action-btn" onclick={timerStore.toggleStartPause}>
+      {#if $timerStore.isRunning}
         <Pause size={24} />
       {:else}
         <Play size={24} />
       {/if}
     </button>
 
-    <button class="action-btn" onclick={resetTimer}>
+    <button class="action-btn" onclick={timerStore.reset}>
       <RotateCcw size={24} />
     </button>
   </div>
@@ -437,10 +285,6 @@
     color: inherit;
   }
 
-  .time-input {
-    caret-color: black;
-  }
-
   .time-input::selection {
     background: transparent;
   }
@@ -449,7 +293,6 @@
     font-size: clamp(62px, 10vw, 118px);
     font-weight: 800;
     line-height: 1;
-    padding-bottom: 0;
   }
 
   .arrow-btn {
@@ -492,44 +335,5 @@
     display: flex;
     align-items: center;
     justify-content: center;
-  }
-
-  @media (max-width: 900px) {
-    .timer-tabs {
-      width: 100%;
-    }
-
-    .timer-tabs button {
-      font-size: 14px;
-      height: 42px;
-      padding: 0 8px;
-    }
-
-    .time-group {
-      min-width: 84px;
-    }
-
-    .timer-actions {
-      gap: 18px;
-    }
-
-    .action-btn {
-      width: 150px;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .time-editor {
-      gap: 4px;
-    }
-
-    .time-group {
-      min-width: 70px;
-    }
-
-    .action-btn {
-      width: 130px;
-      height: 50px;
-    }
   }
 </style>
