@@ -202,7 +202,7 @@
   .add-btn {
     border: none;
     background: transparent;
-    color: #5d80c4;
+    color: #ec5f54;
     cursor: pointer;
     display: flex;
     align-items: center;

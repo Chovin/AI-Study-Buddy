@@ -76,7 +76,7 @@
     </Select>
 
     {#if modelToDownload && !models[modelToDownload]?.installed}
-      <Button on:click={handleModelDownload} raised disabled={disabled}>
+      <Button onclick={handleModelDownload} raised disabled={disabled}>
         Download
       </Button>
     {/if}
