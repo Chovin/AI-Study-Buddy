@@ -11,10 +11,13 @@ import mime from 'mime-types'
 import kill from 'tree-kill'
 import { EventSource } from 'eventsource'
 
+const isDev = !app.isPackaged
+
 const WEBUI_BASE_URL = 'http://localhost:8080/api/v1';
 
 const WEBUI_DIR = path.join(app.getPath('userData'), 'webui')
 const VENV_PATH = path.join(WEBUI_DIR, 'venv')
+const PIP_REQUIREMENTS_PATH = path.join(WEBUI_DIR, 'REQUIREMENTS.txt')
 
 if (!fs.existsSync(WEBUI_DIR)) {
   fs.mkdirSync(WEBUI_DIR, { recursive: true })
@@ -123,8 +126,15 @@ class LLMInterface {
     let lastLibrary = null
     // let lastProgress = 0;
     try {
+      const reqsPath = isDev
+        ? path.join(process.cwd(), 'REQUIREMENTS.txt')
+        : path.join(process.resourcesPath, 'app.asar', 'REQUIREMENTS.txt')
+      const requirements = fs.readFileSync(reqsPath, 'utf-8')
+      
+      fs.writeFileSync(PIP_REQUIREMENTS_PATH, requirements)
+      
       await runCommand(VENV_PYTHON, ['-m', 'pip', 'install', '--upgrade', 'pip'])
-      const output = await runCommand(VENV_PYTHON, ['-m', 'pip', 'install', 'numpy<2', 'open-webui[all]'], {
+      const output = await runCommand(VENV_PYTHON, ['-m', 'pip', 'install', '-r', PIP_REQUIREMENTS_PATH], {
         stdoutCallback: (data) => {
           // pip install doesn't give percentage
           const matchLibrary = data.match(/Downloading (.+?)-/)
@@ -208,6 +218,9 @@ class LLMInterface {
           if (!this.running) {
             progressManager.updateTask(WUIPID, {progress})
           }
+        }
+        if (str.match('address already in use')) {
+          progressManager.failTask(WUIPID, 'Failed to start Open WebUI', new Error('Port 8080 is already in use. Please close any application using this port and try again.'))
         }
         console.log(`[WebUI${error ? ' Error' : ''}]: ${str}`)
 
