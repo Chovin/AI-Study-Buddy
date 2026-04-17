@@ -49,14 +49,14 @@ export function makeRequest(url, method, token = null, body = null) {
 
 export async function runCommand(cmd, args, options={}) {
   return new Promise((resolve, reject) => {
-    const process = spawn(cmd, args, options);
+    const child = spawn(cmd, args, options);
 
     let output = '';
     let errorOutput = '';
     let stdoutBuffer = '';
     let stderrBuffer = '';
 
-    process.stdout.on('data', (data) => {
+    child.stdout.on('data', (data) => {
       const dataSting = data.toString();
       console.log(dataSting)
       output += dataSting
@@ -69,16 +69,16 @@ export async function runCommand(cmd, args, options={}) {
       if (options.stdoutCallback) {
         for (const line of lines) {
           try {
-            options.stdoutCallback(line, process, resolve, reject)
+            options.stdoutCallback(line, child, resolve, reject)
           } catch (error) {
-            process.kill()
+            child.kill()
             reject(new Error(`${error}\n${errorOutput}`))
           }
         }
       }
     });
 
-    process.stderr.on('data', (data) => {
+    child.stderr.on('data', (data) => {
       const dataSting = data.toString();
       errorOutput += dataSting
 
@@ -90,16 +90,16 @@ export async function runCommand(cmd, args, options={}) {
       if (options.stderrCallback) {
         for (let line of lines) {
           try {
-            options.stderrCallback(line, process, resolve, reject)
+            options.stderrCallback(line, child, resolve, reject)
           } catch (error) {
-            process.kill()
+            child.kill()
             reject(new Error(`${error}\n${errorOutput}`))
           }
         }
       }
     });
 
-    process.on('close', (code) => {
+    child.on('close', (code) => {
       if (code === 0) {
         resolve(output.trim());
       } else {
@@ -107,7 +107,7 @@ export async function runCommand(cmd, args, options={}) {
       }
     });
 
-    process.on('error', (err) => {
+    child.on('error', (err) => {
       reject(err);
     });
   });
