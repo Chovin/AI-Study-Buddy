@@ -219,6 +219,9 @@ class LLMInterface {
             progressManager.updateTask(WUIPID, {progress})
           }
         }
+        if (str.match('address already in use')) {
+          progressManager.failTask(WUIPID, 'Failed to start Open WebUI', new Error('Port 8080 is already in use. Please close any application using this port and try again.'))
+        }
         console.log(`[WebUI${error ? ' Error' : ''}]: ${str}`)
 
         if (str.includes('Started server process')) {
