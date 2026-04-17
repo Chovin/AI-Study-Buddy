@@ -695,6 +695,20 @@ class LLMInterface {
     const url = `${WEBUI_BASE_URL}/chat/completions`
     model = model || this.selectModel
 
+    const fileNames = files.map(f => {
+      return `- ${f.file_name} (id: ${f.webui_id})`
+    }).join('\n')
+
+    const filePrompt = `
+You have access to the following files:
+${fileNames}
+When referencing information, use the filename explicitely.
+Do NOT say "the context".
+`
+    messages = JSON.parse(JSON.stringify(messages)) // deep copy to avoid mutating original
+    const systemMsg = messages.find(m => m.role === 'system')
+    systemMsg.content = filePrompt + "\n\n" + systemMsg.content
+
     files = files.map(f => {
       return { type: 'file', id: f.webui_id }
     })
