@@ -28,6 +28,12 @@
 
   let models = $state({})
   let selectedModel = $state('')
+  
+  let selectedModelIsUsable = $derived.by(() => {
+  if (!selectedModel || !models[selectedModel]) return false;
+
+  return models[selectedModel].installed || selectedModel.includes('-cloud');
+  });
 
   let responseString = $state('')
   let question = $state('')
@@ -43,8 +49,7 @@
   let generatingDetailedSummary = $state(false)
 
   let topicChooserRef
-  let topicsSearch = $state('')
-
+  
   $effect(async () => {
     if (selectedTopic) {
       await fetchFiles(selectedTopic.id)
@@ -72,11 +77,15 @@
 
   onMount(() => {
     window.api.onOllamaReady(async () => {
-      models = await window.api.getModels()
-      selectedModel =
-        Object.entries(models).find(([_, o]) => o.summarizer)?.[0] || ''
-      ollamaReady = true
-    })
+  models = await window.api.getModels()
+
+  if (!selectedModel) {
+    selectedModel =
+      Object.entries(models).find(([_, o]) => o.summarizer)?.[0] || ''
+  }
+
+  ollamaReady = true
+})
 
     window.api.onModelDownloaded(async () => {
       models = await window.api.getModels()
@@ -440,7 +449,9 @@
             </div>
 
             <div class="quiz-actions">
-              <Button onclick={generateQuiz} disabled={!selectedTopic || generating}>
+              <Button
+              onclick={generateQuiz}
+              disabled={!selectedTopic || generating || !selectedModelIsUsable}>
                 Generate Quiz
               </Button>
 
