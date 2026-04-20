@@ -7,6 +7,7 @@
   import TopicChooser from './components/TopicChooser.svelte'
   import ProgressNotifications from './components/ProgressNotifications.svelte'
   import TimerPanel from './components/TimerPanel.svelte'
+  import FloatingTimer from './components/FloatingTimer.svelte'
 
   import List, { Item } from '@smui/list'
   import Button from '@smui/button'
@@ -27,6 +28,12 @@
 
   let models = $state({})
   let selectedModel = $state('')
+  
+  let selectedModelIsUsable = $derived.by(() => {
+  if (!selectedModel || !models[selectedModel]) return false;
+
+  return models[selectedModel].installed || selectedModel.includes('-cloud');
+  });
 
   let responseString = $state('')
   let question = $state('')
@@ -42,8 +49,7 @@
   let generatingDetailedSummary = $state(false)
 
   let topicChooserRef
-  let topicsSearch = $state('')
-
+  
   $effect(async () => {
     if (selectedTopic) {
       await fetchFiles(selectedTopic.id)
@@ -71,11 +77,15 @@
 
   onMount(() => {
     window.api.onOllamaReady(async () => {
-      models = await window.api.getModels()
-      selectedModel =
-        Object.entries(models).find(([_, o]) => o.summarizer)?.[0] || ''
-      ollamaReady = true
-    })
+  models = await window.api.getModels()
+
+  if (!selectedModel) {
+    selectedModel =
+      Object.entries(models).find(([_, o]) => o.summarizer)?.[0] || ''
+  }
+
+  ollamaReady = true
+})
 
     window.api.onModelDownloaded(async () => {
       models = await window.api.getModels()
@@ -243,6 +253,10 @@
         class="page-content"
         class:grid-bg={active !== 'timer'}
       >
+        {#if active !== 'timer'}
+          <FloatingTimer />
+        {/if}
+
         {#if active === 'topics'}
           <section class="topics-page">
             <div class="topics-block">
@@ -411,7 +425,7 @@
               {#each flashcards as f, fi (fi)}
                 <div
                   class="flashcard"
-                  on:click={() => (f.flipped = !f.flipped)}
+                  onclick={() => (f.flipped = !f.flipped)}
                 >
                   {#if f.flipped}
                     <h3>{f.back}</h3>
@@ -435,7 +449,9 @@
             </div>
 
             <div class="quiz-actions">
-              <Button onclick={generateQuiz} disabled={!selectedTopic || generating}>
+              <Button
+              onclick={generateQuiz}
+              disabled={!selectedTopic || generating || !selectedModelIsUsable}>
                 Generate Quiz
               </Button>
 
@@ -460,7 +476,7 @@
                       class:answer={q.answered && q.answer == i}
                       class:guessed={q.answered && q.guessed == i}
                       class="choice-row"
-                      on:click={() => {
+                      onclick={() => {
                         q.guessed = i
                         q.answered = true
                       }}
@@ -553,6 +569,7 @@
   }
 
   .page-content {
+    position: relative;
     flex: 1;
     min-width: 0;
     overflow: auto;
@@ -607,6 +624,7 @@
     margin: 0;
     font-size: 28px;
     font-weight: 700;
+    padding-left: 20px;
   }
 
   .files-title-row {
@@ -617,16 +635,16 @@
   }
 
   .files-topic-name {
-    font-size: 16px;
+    font-size: 30px;
     font-weight: 600;
-    color: #9ebfb9;
+    color: #ec5f54;
   }
 
   .topics-card,
   .files-card {
     background: rgba(255, 255, 255, 0.94);
     border: 1.5px solid #2f2f2f;
-    border-radius: 48px;
+    border-radius: 20px;
     min-height: 420px;
     padding: 28px 26px;
     box-sizing: border-box;

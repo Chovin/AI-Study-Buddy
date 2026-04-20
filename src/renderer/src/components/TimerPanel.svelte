@@ -1,322 +1,339 @@
 <script>
-  import { onDestroy } from 'svelte';
+  import { timerStore } from '../../../main/timerStore.js';
+  import { Play, Pause, RotateCcw, ChevronUp, ChevronDown } from 'lucide-svelte';
 
-  let minimized = false;
+  let editHours = '00';
+  let editMinutes = '25';
+  let editSeconds = '00';
 
-  const workSeconds = 25 * 60;
-  const breakSeconds = 5 * 60;
-
-  let mode = 'pomodoro';
-
-  let isBreak = false;
-  let totalSeconds = workSeconds;
-  let timeLeft = totalSeconds;
-
-  let stopwatchSeconds = 0;
-
-  let isRunning = false;
-  let intervalId = null;
-
-  function toggleMinimize() {
-    minimized = !minimized;
+  function wrap(value, min, max) {
+    if (value > max) return min;
+    if (value < min) return max;
+    return value;
   }
 
-  function formatTime(seconds) {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
+  function syncInputsFromTimer() {
+    const total = $timerStore?.timerValue ?? 0;
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
 
-    return [
-      String(hrs).padStart(2, '0'),
-      String(mins).padStart(2, '0'),
-      String(secs).padStart(2, '0')
-    ].join(':');
+    editHours = String(hours).padStart(2, '0');
+    editMinutes = String(minutes).padStart(2, '0');
+    editSeconds = String(seconds).padStart(2, '0');
   }
 
-  function clearTimerInterval() {
-    if (intervalId) {
-      clearInterval(intervalId);
-      intervalId = null;
+  function applyInputsToTimer() {
+    const hours = Math.max(0, Math.min(99, Number(editHours) || 0));
+    const minutes = Math.max(0, Math.min(59, Number(editMinutes) || 0));
+    const seconds = Math.max(0, Math.min(59, Number(editSeconds) || 0));
+
+    timerStore.setTimerValue(hours * 3600 + minutes * 60 + seconds);
+    syncInputsFromTimer();
+  }
+
+  function handleTypedInput(part, event) {
+    let value = event.currentTarget.value.replace(/\D/g, '').slice(0, 2);
+
+    if (part === 'hours') editHours = value;
+    if (part === 'minutes') editMinutes = value;
+    if (part === 'seconds') editSeconds = value;
+  }
+
+  function commitTypedInput() {
+    if ($timerStore.mode !== 'timer' || $timerStore.isRunning) return;
+    applyInputsToTimer();
+  }
+
+  function handleInputKeydown(event) {
+    if (event.key === 'Enter') {
+      commitTypedInput();
+      event.currentTarget.blur();
     }
   }
 
-  function startTimer() {
-    if (isRunning) return;
+  function adjustHours(amount) {
+    if ($timerStore.mode !== 'timer' || $timerStore.isRunning) return;
 
-    isRunning = true;
+    const total = $timerStore.timerValue ?? 0;
+    let hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
 
-    intervalId = setInterval(() => {
-      if (mode === 'stopwatch') {
-        stopwatchSeconds += 1;
-        return;
-      }
-
-      if (timeLeft > 0) {
-        timeLeft -= 1;
-        return;
-      }
-
-      if (isBreak) {
-        isBreak = false;
-        totalSeconds = workSeconds;
-        timeLeft = workSeconds;
-      } else {
-        isBreak = true;
-        totalSeconds = breakSeconds;
-        timeLeft = breakSeconds;
-      }
-    }, 1000);
+    hours = wrap(hours + amount, 0, 99);
+    timerStore.setTimerValue(hours * 3600 + minutes * 60 + seconds);
+    syncInputsFromTimer();
   }
 
-  function pauseTimer() {
-    isRunning = false;
-    clearTimerInterval();
+  function adjustMinutes(amount) {
+    if ($timerStore.mode !== 'timer' || $timerStore.isRunning) return;
+
+    const total = $timerStore.timerValue ?? 0;
+    const hours = Math.floor(total / 3600);
+    let minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
+
+    minutes = wrap(minutes + amount, 0, 59);
+    timerStore.setTimerValue(hours * 3600 + minutes * 60 + seconds);
+    syncInputsFromTimer();
   }
 
-  function resetTimer() {
-    pauseTimer();
+  function adjustSeconds(amount) {
+    if ($timerStore.mode !== 'timer' || $timerStore.isRunning) return;
 
-    if (mode === 'stopwatch') {
-      stopwatchSeconds = 0;
-      return;
-    }
+    const total = $timerStore.timerValue ?? 0;
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    let seconds = total % 60;
 
-    isBreak = false;
-    totalSeconds = workSeconds;
-    timeLeft = workSeconds;
+    seconds = wrap(seconds + amount, 0, 59);
+    timerStore.setTimerValue(hours * 3600 + minutes * 60 + seconds);
+    syncInputsFromTimer();
   }
 
-  function toggleStartPause() {
-    if (isRunning) {
-      pauseTimer();
-    } else {
-      startTimer();
-    }
+  $: displaySeconds = timerStore.getDisplaySeconds($timerStore);
+  $: displayTime = timerStore.formatTime(displaySeconds);
+  $: timeParts = displayTime.split(':');
+  $: timerTitle = timerStore.getFloatingTitle($timerStore);
+
+  $: if ($timerStore.mode === 'timer' && !$timerStore.isRunning) {
+    syncInputsFromTimer();
   }
-
-  function changeMode(event) {
-    const nextMode = event.target.value;
-
-    pauseTimer();
-    mode = nextMode;
-
-    if (mode === 'stopwatch') {
-      stopwatchSeconds = 0;
-    } else {
-      isBreak = false;
-      totalSeconds = workSeconds;
-      timeLeft = workSeconds;
-    }
-  }
-
-  $: displayTime = mode === 'stopwatch'
-    ? formatTime(stopwatchSeconds)
-    : formatTime(timeLeft);
-
-  $: modeLabel = mode === 'stopwatch'
-    ? 'Stopwatch'
-    : isBreak
-      ? 'Break Time'
-      : 'Focus Time';
-
-  $: canReset = mode === 'stopwatch'
-    ? stopwatchSeconds > 0
-    : timeLeft !== totalSeconds || isBreak;
-
-  onDestroy(() => {
-    clearTimerInterval();
-  });
 </script>
 
-{#if minimized}
-  <div class="timer-card minimized">
-    <button class="toggle-btn" on:click={toggleMinimize} aria-label="Expand timer">
-      +
+<div class="timer-shell">
+  <div class="timer-tabs">
+    <button class:active={$timerStore.mode === 'timer'} onclick={() => timerStore.setMode('timer')}>
+      Timer
     </button>
-
-    <div class="timer-mode">{modeLabel}</div>
-    <div class="timer-text">{displayTime}</div>
+    <button class:active={$timerStore.mode === 'pomodoro'} onclick={() => timerStore.setMode('pomodoro')}>
+      Pomodoro
+    </button>
+    <button class:active={$timerStore.mode === 'stopwatch'} onclick={() => timerStore.setMode('stopwatch')}>
+      Stopwatch
+    </button>
   </div>
-{:else}
-  <div class="timer-card expanded">
-    <button class="toggle-btn" on:click={toggleMinimize} aria-label="Minimize timer">
-      −
-    </button>
 
-    <select class="timer-mode-select" bind:value={mode} on:change={changeMode}>
-      <option value="pomodoro">Pomodoro Timer</option>
-      <option value="stopwatch">Stopwatch</option>
-    </select>
+  <div class="timer-label">{timerTitle}</div>
 
-    <div class="timer-mode">{modeLabel}</div>
-    <div class="timer-text">{displayTime}</div>
-
-    <div class="timer-actions">
-      <button on:click={toggleStartPause}>
-        {isRunning ? 'Pause' : 'Start'}
+  <div class="time-editor">
+    <div class="time-group">
+      <button class="arrow-btn" onclick={() => adjustHours(1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
+        <ChevronUp size={26} />
       </button>
 
-      <button on:click={resetTimer} disabled={!canReset}>
-        Reset
+      {#if $timerStore.mode === 'timer' && !$timerStore.isRunning}
+        <input
+          class="time-input"
+          type="text"
+          inputmode="numeric"
+          maxlength="2"
+          bind:value={editHours}
+          oninput={(e) => handleTypedInput('hours', e)}
+          onblur={commitTypedInput}
+          onkeydown={handleInputKeydown}
+        />
+      {:else}
+        <div class="time-display">{timeParts[0]}</div>
+      {/if}
+
+      <button class="arrow-btn" onclick={() => adjustHours(-1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
+        <ChevronDown size={26} />
       </button>
     </div>
 
-    <div class="study-tip-section">
-      <h2>Study Tip</h2>
-      <p>study tips will be generated from ai and will fade in and out every 10 minutes.</p>
+    <div class="colon">:</div>
+
+    <div class="time-group">
+      <button class="arrow-btn" onclick={() => adjustMinutes(1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
+        <ChevronUp size={26} />
+      </button>
+
+      {#if $timerStore.mode === 'timer' && !$timerStore.isRunning}
+        <input
+          class="time-input"
+          type="text"
+          inputmode="numeric"
+          maxlength="2"
+          bind:value={editMinutes}
+          oninput={(e) => handleTypedInput('minutes', e)}
+          onblur={commitTypedInput}
+          onkeydown={handleInputKeydown}
+        />
+      {:else}
+        <div class="time-display">{timeParts[1]}</div>
+      {/if}
+
+      <button class="arrow-btn" onclick={() => adjustMinutes(-1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
+        <ChevronDown size={26} />
+      </button>
+    </div>
+
+    <div class="colon">:</div>
+
+    <div class="time-group">
+      <button class="arrow-btn" onclick={() => adjustSeconds(1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
+        <ChevronUp size={26} />
+      </button>
+
+      {#if $timerStore.mode === 'timer' && !$timerStore.isRunning}
+        <input
+          class="time-input"
+          type="text"
+          inputmode="numeric"
+          maxlength="2"
+          bind:value={editSeconds}
+          oninput={(e) => handleTypedInput('seconds', e)}
+          onblur={commitTypedInput}
+          onkeydown={handleInputKeydown}
+        />
+      {:else}
+        <div class="time-display">{timeParts[2]}</div>
+      {/if}
+
+      <button class="arrow-btn" onclick={() => adjustSeconds(-1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
+        <ChevronDown size={26} />
+      </button>
     </div>
   </div>
-{/if}
+
+  <div class="timer-actions">
+    <button class="action-btn" onclick={timerStore.toggleStartPause}>
+      {#if $timerStore.isRunning}
+        <Pause size={24} />
+      {:else}
+        <Play size={24} />
+      {/if}
+    </button>
+
+    <button class="action-btn" onclick={timerStore.reset}>
+      <RotateCcw size={24} />
+    </button>
+  </div>
+</div>
 
 <style>
-.timer-card {
-  position: relative;
-  width: 100%;
-  max-width: 420px;
-  border: 1px solid #222;
-  background: white;
-  box-sizing: border-box;
-}
-
-.expanded {
-  min-height: 620px;
-  border-radius: 24px;
-  padding: 24px 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.minimized {
-  min-height: 110px;
-  border-radius: 24px;
-  padding: 28px 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.toggle-btn {
-  position: absolute;
-  top: 8px;
-  right: 18px;
-  font-size: 18px;
-  font-weight: 500;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0;
-}
-
-.toggle-btn:hover {
-  opacity: 0.6;
-}
-
-.timer-mode-select {
-  margin-top: 16px;
-  font-size: 15px;
-  border: 1px solid #222;
-  border-radius: 8px;
-  background: white;
-  padding: 6px 10px;
-  max-width: 100%;
-}
-
-.timer-mode {
-  margin-top: 10px;
-  font-size: 14px;
-  color: #666;
-}
-
-.timer-text {
-  margin-top: 32px;
-  font-size: clamp(34px, 5vw, 64px);
-  font-weight: 700;
-  line-height: 1;
-  text-align: center;
-}
-
-.timer-actions {
-  margin-top: 40px;
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.timer-actions button {
-  min-width: 120px;
-  height: 38px;
-  border: 1px solid #222;
-  border-radius: 8px;
-  background: white;
-  cursor: pointer;
-}
-
-.timer-actions button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.study-tip-section {
-  margin-top: 72px;
-  text-align: center;
-  max-width: 280px;
-}
-
-.study-tip-section h2 {
-  font-size: 24px;
-  margin-bottom: 14px;
-}
-
-.study-tip-section p {
-  font-size: 15px;
-  line-height: 1.35;
-}
-
-.minimized .timer-text {
-  margin-top: 0;
-  font-size: clamp(28px, 4vw, 52px);
-}
-
-.minimized .timer-mode {
-  margin-top: 0;
-}
-
-@media (max-width: 1200px) {
-  .timer-card {
-    max-width: 340px;
+  .timer-shell {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
-  .expanded {
-    min-height: 540px;
-    padding: 20px 16px;
+  .timer-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    border: 2px solid #2c2c2c;
+    border-radius: 999px;
+    padding: 4px;
+    width: min(100%, 520px);
+    box-sizing: border-box;
   }
 
-  .timer-mode-select {
-    font-size: 14px;
+  .timer-tabs button {
+    flex: 1;
+    height: 46px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    font-size: 16px;
+    cursor: pointer;
   }
 
-  .timer-actions button {
-    min-width: 100px;
-    height: 36px;
-    font-size: 14px;
+  .timer-tabs button.active {
+    border: 2px solid #2c2c2c;
+    background: #f6f6f6;
   }
 
-  .study-tip-section {
-    margin-top: 48px;
-    max-width: 240px;
+  .timer-label {
+    margin-top: 44px;
+    font-size: 18px;
   }
 
-  .study-tip-section h2 {
-    font-size: 20px;
+  .time-editor {
+    margin-top: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: nowrap;
   }
 
-  .study-tip-section p {
-    font-size: 14px;
+  .time-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 120px;
   }
-}
+
+  .time-input,
+  .time-display {
+    width: 2.2ch;
+    min-width: 2ch;
+    border: none;
+    background: transparent;
+    outline: none;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+    font-size: clamp(62px, 10vw, 118px);
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+    color: inherit;
+  }
+
+  .time-input::selection {
+    background: transparent;
+  }
+
+  .colon {
+    font-size: clamp(62px, 10vw, 118px);
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .arrow-btn {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .arrow-btn :global(svg) {
+    display: block;
+  }
+
+  .arrow-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .timer-actions {
+    margin-top: 52px;
+    display: flex;
+    gap: 46px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    width: 210px;
+    height: 56px;
+    border: 2px solid #2c2c2c;
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 </style>
