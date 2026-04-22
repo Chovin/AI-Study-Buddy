@@ -81,6 +81,16 @@ app.whenReady().then(async () => {
   app.db = db;
   llmApi.setDatabase(db);
 
+  // Load timer settings and initialize timerStore
+  try {
+    const timerSettings = await db.loadTimerSettings();
+    const { timerStore } = await import('./timerStore.js');
+    timerStore.setTimerValue(timerSettings.timer_value);
+    timerStore.setPomodoroSettings(timerSettings.pomodoro_work, timerSettings.pomodoro_break);
+  } catch (err) {
+    console.error('Failed to load timer settings:', err);
+  }
+
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils

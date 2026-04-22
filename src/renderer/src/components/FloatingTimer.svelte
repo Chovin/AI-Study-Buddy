@@ -1,6 +1,21 @@
 <script>
   import { timerStore } from '../../../main/timerStore.js';
   import { Play, Pause, RotateCcw, Plus, Minus } from 'lucide-svelte';
+  import { onMount } from 'svelte';
+
+  let settingsLoaded = false;
+
+  onMount(async () => {
+    try {
+      const settings = await window.api.loadTimerSettings();
+      timerStore.setTimerValue(settings.timer_value);
+      timerStore.setPomodoroSettings(settings.pomodoro_work, settings.pomodoro_break);
+      settingsLoaded = true;
+    } catch (err) {
+      console.error('Failed to load timer settings in FloatingTimer:', err);
+      settingsLoaded = true;
+    }
+  });
 
   $: displaySeconds = timerStore.getDisplaySeconds($timerStore);
   $: displayTime = timerStore.formatTime(displaySeconds);

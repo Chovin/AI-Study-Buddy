@@ -183,17 +183,17 @@
     await topicChooserRef?.loadTopics()
   }
 
-  onMount(() => {
+  onMount(async () => {
     window.api.onOllamaReady(async () => {
-  models = await window.api.getModels()
+      models = await window.api.getModels()
 
-  if (!selectedModel) {
-    selectedModel =
-      Object.entries(models).find(([_, o]) => o.summarizer)?.[0] || ''
-  }
+      if (!selectedModel) {
+        selectedModel =
+          Object.entries(models).find(([_, o]) => o.summarizer)?.[0] || ''
+      }
 
-  ollamaReady = true
-})
+      ollamaReady = true
+    })
 
     window.api.onModelDownloaded(async () => {
       models = await window.api.getModels()
