@@ -1,7 +1,6 @@
 <script>
   import Select, { Option } from '@smui/select';
   import Button from '@smui/button';
-  import { untrack } from 'svelte';
 
   let {
     models = $bindable({}),
@@ -9,42 +8,13 @@
     disabled = false
   } = $props();
 
-  let modelToDownload = $state('');
-
-  let modelList = $derived.by(() => {
-    return Object.keys(models);
-  });
-
-  $effect(() => {
-    let mtd = untrack(() => modelToDownload);
-    let ms = untrack(() => models);
-
-    if (selectedModel != mtd && ms[selectedModel]?.installed) {
-      modelToDownload = selectedModel;
-    }
-  });
-
-  function handleModelChange() {
-    if (disabled) return;
-
-    if (models[modelToDownload]?.installed) {
-      selectedModel = modelToDownload;
-    }
-  }
-
   async function handleModelDownload() {
-    if (disabled || !modelToDownload) return;
-
-    let downloadingModel = modelToDownload;
+    if (disabled || !selectedModel) return;
 
     try {
-      let success = await window.api.downloadModel(modelToDownload);
+      let success = await window.api.downloadModel(selectedModel);
 
       if (success) {
-        if (downloadingModel === modelToDownload) {
-          selectedModel = modelToDownload;
-        }
-
         alert('Model downloaded successfully');
       }
     } catch (error) {
@@ -58,16 +28,15 @@
 
   <div class="selector-box">
     <Select
-      bind:value={modelToDownload}
+      bind:value={selectedModel}
       label=""
       variant="outlined"
       disabled={disabled}
-      on:SMUISelectChange={handleModelChange}
     >
-      {#if modelList.length === 0}
+      {#if Object.keys(models).length === 0}
         <Option value="" disabled>Loading models...</Option>
       {:else}
-        {#each modelList as model (model)}
+        {#each Object.keys(models) as model (model)}
           <Option value={model}>
             {model} ({models[model].size})
           </Option>
@@ -75,7 +44,7 @@
       {/if}
     </Select>
 
-    {#if modelToDownload && !models[modelToDownload]?.installed}
+    {#if selectedModel && !models[selectedModel]?.installed}
       <Button onclick={handleModelDownload} raised disabled={disabled}>
         Download
       </Button>
