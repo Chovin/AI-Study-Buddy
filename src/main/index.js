@@ -78,6 +78,7 @@ app.whenReady().then(() => {
 
   db = new Database();
   app.db = db;
+  llmApi.setDatabase(db);
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -248,11 +249,10 @@ ipcMain.handle('chat', async (_, { model, topicId, fileIds, prompt }) => {
     console.log('Chat request:', { topicId, fileIds, prompt, fileObjs })
     const response = await llmApi.chatWithFileContext({
       model,
+      topicId,
       files: fileObjs,
-      messages: [
-        { role: 'system', content: `You are a helpful assistant and study buddy with the purpose of helping the user study by answering questions about the provided context from uploaded documents.` },
-        { role: 'user', content: prompt }
-      ]
+      systemMessage: `You are a helpful assistant and study buddy with the purpose of helping the user study by answering questions about the provided context from uploaded documents.`,
+      promptMessage: prompt
     })
     console.log(response);
     return response;
@@ -269,9 +269,10 @@ async function generateQuiz(model, topicId, fileIds, numberOfQuestions, difficul
     const files = (await db.getFilesByTopic(topicId)).filter(f => fileIds.includes(f.id))
     let response = await llmApi.chatWithFileContext({
       model,
+      topicId,
+      saveToHistory: false,
       files,
-      messages: [
-        { role: 'system', content: `
+      systemMessage: `
 You are a study assistant that generates quizzes from provided document context.
 
 Instructions:
@@ -316,9 +317,8 @@ Format:
     "explanation": "<brief explanation for the correct answer>"
   }
 ]
-        ` },
-        { role: 'user', content: `generate a quiz with ${numberOfQuestions} ${difficulty}-difficulty questions`}
-      ]
+      `,
+      promptMessage: `generate a quiz with ${numberOfQuestions} ${difficulty}-difficulty questions`
     })
     console.log(response)
     response = response.trim()
@@ -367,6 +367,10 @@ ipcMain.handle('generate-quiz', async (_, { model, topicId, fileIds, numberOfQue
         if (qs[q.question]) throw new Error('Duplicate question')
         qs[q.question] = true
       });
+      
+      // Save quiz to database
+      await db.saveGeneratedContent(topicId, 'quiz', JSON.stringify(quiz), fileIds || []);
+      
       finishTask()
       return quiz
     } catch (error) {
@@ -388,11 +392,10 @@ async function generateFlashcards(model, topicId, fileIds, numberOfCards, diffic
 
     let response = await llmApi.chatWithFileContext({
       model,
+      topicId,
+      saveToHistory: false,
       files,
-      messages: [
-        {
-          role: 'system',
-          content: `
+      systemMessage: `
 You are a study assistant that generates flashcards from provided document context.
 
 Instructions:
@@ -419,13 +422,8 @@ Format:
     "back": "<answer or explanation>"
   }
 ]
-          `
-        },
-        {
-          role: 'user',
-          content: `generate ${numberOfCards} ${difficulty}-difficulty flashcards`
-        }
-      ]
+        `,
+      promptMessage: `generate ${numberOfCards} ${difficulty}-difficulty flashcards`
     })
 
     console.log(response)
@@ -488,6 +486,9 @@ ipcMain.handle('generate-flashcards', async (_, { model, topicId, fileIds, numbe
         seen[f.front] = true
       })
 
+      // Save flashcards to database
+      await db.saveGeneratedContent(topicId, 'flashcard', JSON.stringify(flashcards), fileIds || []);
+
       finishTask()
       return flashcards
     } catch (error) {
@@ -509,9 +510,9 @@ async function generateSummaryBase(model, topicId, fileIds, style) {
   try {
     const files = (await db.getFilesByTopic(topicId)).filter(f => fileIds.includes(f.id))
 
-    let prompt = ''
+    let systemMessage = ''
     if (style === 'quick') {
-      prompt = `
+      systemMessage = `
 You are a study assistant that creates concise summaries from provided document context.
 
 Instructions:
@@ -525,7 +526,7 @@ Output rules:
 - Do not include any text outside the summary.
 - Use headers and bullets only when helpful.`
     } else {
-      prompt = `
+      systemMessage = `
 You are a study assistant that creates in-depth summaries from provided document context.
 
 Instructions:
@@ -542,17 +543,11 @@ Output rules:
 
     let response = await llmApi.chatWithFileContext({
       model,
+      topicId,
+      saveToHistory: false,
       files,
-      messages: [
-        {
-          role: 'system',
-          content: prompt
-        },
-        {
-          role: 'user',
-          content: `Create a ${style} summary of the provided documents.`
-        }
-      ]
+      systemMessage,
+      promptMessage: `Create a ${style} summary of the provided documents.`
     })
 
     console.log(response)
@@ -571,6 +566,9 @@ Output rules:
     if (!response) {
       throw new Error("Empty summary generated")
     }
+
+    // Save content summary to database
+    await db.saveGeneratedContent(topicId, 'content_summary', response, fileIds || []);
 
     return response
   } catch (err) {
