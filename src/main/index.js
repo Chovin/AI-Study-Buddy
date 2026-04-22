@@ -355,12 +355,61 @@ Format:
     response = response.replaceAll(/"\[\d+\] ?/g, '"')
     // don't just remove these intances because sometimes the llm
     // references the context files as [1], etc
-    if (response.match(/\[\d+\]/)) {
-      throw new Error("Incorrectly formatted quiz")
+
+    // this happens so often, maybe we just live with it.. or remove all instances..
+    // if (response.match(/\[\d+\]/)) {
+    //   throw new Error("Incorrectly formatted quiz")
+    // }
+
+    let quiz
+    
+    try {
+      quiz = JSON.parse(response)
+    } catch (err) {
+      const matches = response.matchAll(/^((#* ?\**(question)? ?(?<qn>\d+)\.?\**:?\**\n*(?<question>.*)$)|(#* ?\**(answer)\.?\**:?\**\s*\n*\**( ?\(?(?<answerchoice>[abcd1234])[.)] ?)?\n*(?<answer>.*)$)|(\** ?\(?(?<cn>[abcd1234])[.)] (?<choice>.*))|(#* ?\**(explanation)\.?\**:\**\n*(?<explanation>.*)$))/gim)
+      quiz = []
+      let currentQuestion = null
+      for (const match of matches) {
+        if (match.groups.question) {
+          if (currentQuestion) {
+            quiz.push(currentQuestion)
+          }
+          currentQuestion = {
+            question: match.groups.question.trim(),
+            choices: [],
+            answer: null,
+            explanation: null
+          }
+        } else if (match.groups.choice) {
+          currentQuestion.choices.push(match.groups.choice.trim())
+        } else if (match.groups.answer || match.groups.answerchoice) {
+          let answerIndex
+          if (match.groups.answerchoice) {
+            const answerLetter = match.groups.answerchoice.trim()[0].toLowerCase()
+            if (!['a', 'b', 'c', 'd'].includes(answerLetter)) {
+              answerIndex = parseInt(answerLetter) - 1
+            } else {
+              answerIndex = answerLetter.charCodeAt(0) - 'a'.charCodeAt(0)
+            }
+          } else {
+            answerIndex = currentQuestion.choices.indexOf(match.groups.answer.trim())
+          }
+          if (answerIndex !== -1) {
+            currentQuestion.answer = answerIndex
+          }
+        } else if (match.groups.explanation) {
+          currentQuestion.explanation = match.groups.explanation.trim()
+        }
+      }
+      if (currentQuestion) {
+        quiz.push(currentQuestion)
+      }
     }
-    const quiz = JSON.parse(response)
-    if (quiz.some(q => !q.question.trim()) || quiz.some(q => q.choices.some(v => !v.trim())) || quiz.some(q => !q.explanation.trim())) {
-      throw new Error("Empty question, answers, or explanation")
+    if (quiz.some(q => !q.question.trim()) || quiz.some(q => q.choices.some(v => !v.trim()) || quiz.some((q) => q.answer === null || q.answer < 0 || q.answer > q.choices.length - 1))) {
+      throw new Error("Empty question or answers")
+    }
+    if (quiz.length !== numberOfQuestions) {
+      throw new Error(`Quiz is the wrong size. likely incorrectly formatted.`)
     }
     return quiz
   } catch (err) {
@@ -463,11 +512,45 @@ Format:
     response = response.replaceAll(/<\/?(card|p) ?\d*\/?>/g, "")
     response = response.replaceAll(/"\[\d+\] ?/g, '"')
 
-    if (response.match(/\[\d+\]/)) {
-      throw new Error("Incorrectly formatted flashcards")
+    // this happens so often, maybe we just live with it.. or remove all instances..
+    // if (response.match(/\[\d+\]/)) {
+    //   throw new Error("Incorrectly formatted flashcards")
+    // }
+
+    let flashcards;
+
+    // try make sure it's json
+    try {
+      flashcards = JSON.parse(response)
+    } catch (err) {
+      // if not, recover if it's question/front: answer/back: pairs
+      let matches = response.matchAll(/\**((?<front>question|front)|(?<back>answer|back))\** ?\d*:\** (?<content>.*)/gi)
+      flashcards = []
+      let card = {}
+      let front = true
+      matches.forEach(m => {
+        if (front && m.groups.front) {
+          card.front = m.groups.content
+        } else if (!front && m.groups.back) {
+          card.back = m.groups.content
+          flashcards.push(card)
+          card = {}
+        } else {
+          // if we get a back without a front or vice versa, the format is wrong
+          throw new Error("Incorrectly formatted flashcards. " + err)
+        }
+        front = !front
+      });
+      if (flashcards.length !== numberOfCards) {
+        throw new Error("Incorrectly formatted flashcards. Couldn't recover enough flashcards from response. " + err)
+      }
     }
 
-    const flashcards = JSON.parse(response)
+    // check if each flashcard is just an array of 2 strings
+    if (flashcards.every(f => Array.isArray(f) && f.length === 2)) {
+      // incorrect format but we can recover
+      flashcards = flashcards.map(f => ({ front: f[0], back: f[1] })) 
+    }
 
     if (
       flashcards.some(f => !f.front.trim()) ||

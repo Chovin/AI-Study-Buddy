@@ -587,7 +587,7 @@
                   {/each}
                 </form>
 
-                {#if q.answered}
+                {#if q.answered && q.explanation}
                   <div class="explanation">
                     <p><strong>Explanation:</strong> {q.explanation}</p>
                   </div>
