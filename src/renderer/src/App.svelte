@@ -56,8 +56,34 @@
   let chatInitialLoad = $state(true)
   let chatExhausted = $state(false)
 
+  // Tab scroll position tracking using Map for better reactivity
+  let scrollPositions = $state(new Map([
+    ['topics', 0],
+    ['chat', 0],
+    ['summary', 0],
+    ['flashcards', 0],
+    ['quiz', 0],
+    ['timer', 0]
+  ]))
+
+  let ignoreScroll = $state(false)
 
   let topicChooserRef
+
+  $effect(() => {
+    const onScroll = (e) => {
+      if (ignoreScroll) return
+      scrollPositions.set(active, window.scrollY)
+    }
+
+    window.addEventListener('scroll', onScroll, {passive: true});
+
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+    }
+  })
+
+  // Handle tab changes to restore scroll positions
   $effect(() => {
     const currentTab = active
 
@@ -65,6 +91,12 @@
 
     queueMicrotask(() => {
       requestAnimationFrame(() => {
+        const target = scrollPositions.get(currentTab) ?? 0
+
+        window.scrollTo({
+          top: target,
+          behavior: 'auto'
+        })
 
         requestAnimationFrame(() => {
           ignoreScroll = false
