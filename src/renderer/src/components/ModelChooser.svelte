@@ -8,13 +8,6 @@
     disabled = false
   } = $props();
 
-<<<<<<< HEAD
-  async function handleModelDownload() {
-    if (disabled || !selectedModel) return;
-
-    try {
-      let success = await window.api.downloadModel(selectedModel);
-=======
   let modelList = $derived.by(() => Object.keys(models));
 
   function isCloudModel(modelName) {
@@ -28,7 +21,6 @@
 
     try {
       const success = await window.api.downloadModel(modelName);
->>>>>>> d929177b1fcc534d563f8ca429fa2b36633ef455
 
       if (success) {
         alert('Model downloaded successfully');
@@ -60,11 +52,7 @@
       {/if}
     </Select>
 
-<<<<<<< HEAD
-    {#if selectedModel && !models[selectedModel]?.installed}
-=======
     {#if selectedModel && !models[selectedModel]?.installed && !isCloudModel(selectedModel)}
->>>>>>> d929177b1fcc534d563f8ca429fa2b36633ef455
       <Button onclick={handleModelDownload} raised disabled={disabled}>
         Download
       </Button>
