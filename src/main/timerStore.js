@@ -12,6 +12,8 @@ function createTimerStore() {
 
     timerValue: TIMER_DEFAULT,
     pomodoroTimeLeft: POMODORO_WORK,
+    pomodoroWork: POMODORO_WORK,
+    pomodoroBreak: POMODORO_BREAK,
     stopwatchSeconds: 0,
 
     minimized: true,
@@ -82,7 +84,7 @@ function createTimerStore() {
       return {
         ...state,
         isBreak: false,
-        pomodoroTimeLeft: POMODORO_WORK,
+        pomodoroTimeLeft: state.pomodoroWork,
         completedPomodoros: state.completedPomodoros + 1
       };
     }
@@ -90,7 +92,7 @@ function createTimerStore() {
     return {
       ...state,
       isBreak: true,
-      pomodoroTimeLeft: POMODORO_BREAK
+      pomodoroTimeLeft: state.pomodoroBreak
     };
   }
 
@@ -194,7 +196,7 @@ function createTimerStore() {
           mode: 'timer',
           isRunning: false,
           isBreak: false,
-          timerValue: TIMER_DEFAULT
+          timerValue: state.timerValue
         };
       }
 
@@ -203,7 +205,7 @@ function createTimerStore() {
         mode: 'pomodoro',
         isRunning: false,
         isBreak: false,
-        pomodoroTimeLeft: POMODORO_WORK,
+        pomodoroTimeLeft: state.pomodoroWork,
         completedPomodoros: 0
       };
     });
@@ -213,6 +215,15 @@ function createTimerStore() {
     update((state) => ({
       ...state,
       timerValue: Math.max(0, Number(seconds) || 0)
+    }));
+  }
+
+  function setPomodoroSettings(workDuration, breakDuration) {
+    update((state) => ({
+      ...state,
+      pomodoroWork: Math.max(0, Number(workDuration) || POMODORO_WORK),
+      pomodoroBreak: Math.max(0, Number(breakDuration) || POMODORO_BREAK),
+      pomodoroTimeLeft: Math.max(0, Number(workDuration) || POMODORO_WORK)
     }));
   }
 
@@ -239,6 +250,7 @@ function createTimerStore() {
     reset,
     setMode,
     setTimerValue,
+    setPomodoroSettings,
     toggleMinimized,
     clearTimerInterval,
     formatTime,

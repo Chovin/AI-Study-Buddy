@@ -72,11 +72,12 @@ function createWindow() {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
   db = new Database();
+  await db.initialize();
   app.db = db;
   llmApi.setDatabase(db);
 
@@ -750,5 +751,23 @@ ipcMain.handle('generate-detailed-summary', async (_, { model, topicId, fileIds 
 
       continue
     }
+  }
+})
+
+ipcMain.handle('save-timer-settings', async (_, { timerValue, pomodoroWork, pomodoroBreak }) => {
+  try {
+    await db.saveTimerSettings(timerValue, pomodoroWork, pomodoroBreak)
+    return 'Timer settings saved successfully'
+  } catch (err) {
+    throw new Error(err.message)
+  }
+})
+
+ipcMain.handle('load-timer-settings', async () => {
+  try {
+    const settings = await db.loadTimerSettings()
+    return settings
+  } catch (err) {
+    throw new Error(err.message)
   }
 })

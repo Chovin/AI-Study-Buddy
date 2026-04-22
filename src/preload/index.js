@@ -76,6 +76,12 @@ const api = {
   },
   getChatHistoryPage: async (topicId, beforeId, pageSize) => {
     return await electronAPI.ipcRenderer.invoke('get-chat-history-page', { topicId, beforeId, pageSize })
+  },
+  saveTimerSettings: async (timerValue, pomodoroWork, pomodoroBreak) => {
+    return await electronAPI.ipcRenderer.invoke('save-timer-settings', { timerValue, pomodoroWork, pomodoroBreak })
+  },
+  loadTimerSettings: async () => {
+    return await electronAPI.ipcRenderer.invoke('load-timer-settings')
   }
 }
 

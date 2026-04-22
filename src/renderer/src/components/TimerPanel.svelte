@@ -1,10 +1,25 @@
 <script>
   import { timerStore } from '../../../main/timerStore.js';
   import { Play, Pause, RotateCcw, ChevronUp, ChevronDown } from 'lucide-svelte';
+  import { onMount } from 'svelte';
 
   let editHours = '00';
   let editMinutes = '25';
   let editSeconds = '00';
+  let settingsLoaded = false;
+
+  onMount(async () => {
+    try {
+      const settings = await window.api.loadTimerSettings();
+      timerStore.setTimerValue(settings.timer_value);
+      timerStore.setPomodoroSettings(settings.pomodoro_work, settings.pomodoro_break);
+      syncInputsFromTimer();
+      settingsLoaded = true;
+    } catch (err) {
+      console.error('Failed to load timer settings:', err);
+      settingsLoaded = true;
+    }
+  });
 
   function wrap(value, min, max) {
     if (value > max) return min;
@@ -98,6 +113,15 @@
 
   $: if ($timerStore.mode === 'timer' && !$timerStore.isRunning) {
     syncInputsFromTimer();
+  }
+
+  // Save timer settings when they change (only after initial load)
+  $: if (settingsLoaded && $timerStore) {
+    window.api.saveTimerSettings(
+      $timerStore.timerValue,
+      $timerStore.pomodoroWork,
+      $timerStore.pomodoroBreak
+    ).catch(err => console.error('Failed to save timer settings:', err));
   }
 </script>
 

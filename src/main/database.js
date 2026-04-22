@@ -97,15 +97,15 @@ class Database {
     this.initialize();
   }
 
-  initialize() {
-    this.db.run(`
+  async initialize() {
+    await this.runAsync(`
       CREATE TABLE IF NOT EXISTS topics (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE NOT NULL
       )
     `);
 
-    this.db.run(`
+    await this.runAsync(`
       CREATE TABLE IF NOT EXISTS files (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         topic_id INTEGER NOT NULL,
@@ -117,7 +117,7 @@ class Database {
         FOREIGN KEY (topic_id) REFERENCES topics (id)
       )
     `);
-    this.db.run(`
+    await this.runAsync(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT UNIQUE NOT NULL,
@@ -125,7 +125,7 @@ class Database {
         encrypted_api_key TEXT NOT NULL
       )
     `);
-    this.db.run(`
+    await this.runAsync(`
       CREATE TABLE IF NOT EXISTS chat_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         topic_id INTEGER NOT NULL,
@@ -136,7 +136,7 @@ class Database {
         FOREIGN KEY (topic_id) REFERENCES topics (id)
       )
     `);
-    this.db.run(`
+    await this.runAsync(`
       CREATE TABLE IF NOT EXISTS summaries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         topic_id INTEGER NOT NULL,
@@ -144,6 +144,19 @@ class Database {
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (topic_id) REFERENCES topics (id)
       )
+    `);
+    await this.runAsync(`
+      CREATE TABLE IF NOT EXISTS timer_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        timer_value INTEGER DEFAULT 1500,
+        pomodoro_work INTEGER DEFAULT 1500,
+        pomodoro_break INTEGER DEFAULT 300
+      )
+    `);
+    // Initialize with default values if empty
+    await this.runAsync(`
+      INSERT OR IGNORE INTO timer_settings (id, timer_value, pomodoro_work, pomodoro_break)
+      VALUES (1, 1500, 1500, 300)
     `);
   }
 
@@ -391,6 +404,25 @@ class Database {
       ORDER BY timestamp ASC
     `;
     return await this.allAsync(query, [topicId]);
+  }
+
+  async saveTimerSettings(timerValue, pomodoroWork, pomodoroBreak) {
+    const query = `
+      UPDATE timer_settings
+      SET timer_value = ?, pomodoro_work = ?, pomodoro_break = ?
+      WHERE id = 1
+    `;
+    return await this.runAsync(query, [timerValue, pomodoroWork, pomodoroBreak]);
+  }
+
+  async loadTimerSettings() {
+    const query = `
+      SELECT timer_value, pomodoro_work, pomodoro_break
+      FROM timer_settings
+      WHERE id = 1
+    `;
+    const results = await this.allAsync(query, []);
+    return results[0] || { timer_value: 1500, pomodoro_work: 1500, pomodoro_break: 300 };
   }
 }
 
