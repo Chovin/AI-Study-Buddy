@@ -7,12 +7,12 @@
   import TopicChooser from './components/TopicChooser.svelte'
   import ProgressNotifications from './components/ProgressNotifications.svelte'
   import TimerPanel from './components/TimerPanel.svelte'
+  import Chat from './components/Chat.svelte'
   import FloatingTimer from './components/FloatingTimer.svelte'
 
   import List, { Item } from '@smui/list'
   import Button from '@smui/button'
   import IconButton from '@smui/icon-button'
-  import Textfield from '@smui/textfield'
   import CircularProgress from '@smui/circular-progress'
   import { onMount } from 'svelte'
 
@@ -24,6 +24,7 @@
 
   let ollamaReady = $state(false)
   let selectedTopic = $state(null)
+  let prevTopicId = $state(null)
   let files = $state([])
 
   let models = $state({})
@@ -48,18 +49,93 @@
   let generatingQuickSummary = $state(false)
   let generatingDetailedSummary = $state(false)
 
+  let chatHistory = $state([])
+  let chatLoading = $state(false)
+  let chatLoadingMore = $state(false)
+  let pageSize = 50
+  let chatInitialLoad = $state(true)
+  let chatExhausted = $state(false)
+
+
   let topicChooserRef
+  $effect(() => {
+    const currentTab = active
+
+    ignoreScroll = true
+
+    queueMicrotask(() => {
+      requestAnimationFrame(() => {
+
+        requestAnimationFrame(() => {
+          ignoreScroll = false
+        })
+      })
+    })
+  })
+
   
   $effect(async () => {
     if (selectedTopic) {
       await fetchFiles(selectedTopic.id)
+      await fetchChatHistory(selectedTopic.id, prevTopicId != selectedTopic.id)
+      if (prevTopicId != selectedTopic.id) {
+        chatInitialLoad = true
+      }
+      prevTopicId = selectedTopic.id
     } else {
       files = []
+      chatHistory = []
     }
+    chatExhausted = false
   })
 
   async function fetchFiles(topicId) {
     files = await window.api.getFiles(topicId)
+  }
+
+  async function fetchChatHistory(topicId, replaceChatHistory = false) {
+    try {
+      const newChatHistory = (await window.api.getChatHistory(topicId, pageSize)).messages
+      if (replaceChatHistory) {
+        chatHistory = newChatHistory
+      } else {
+        const lastMsg = chatHistory[chatHistory.length-1]
+        let indexOfLastOldMsg = -1
+        for (let i=0; i<newChatHistory.length; i++) {
+          if (newChatHistory[i].id == lastMsg?.id) {
+            indexOfLastOldMsg = i
+          }
+        }
+        const newMsgs = newChatHistory.slice(indexOfLastOldMsg+1)
+        chatHistory.push(...newMsgs)
+      }
+    } catch (err) {
+      console.error('Error fetching chat history:', err)
+      chatHistory = []
+    }
+  }
+
+  async function loadMoreChatMessages() {
+    if (!selectedTopic || chatLoadingMore || chatHistory.length === 0) return
+
+    try {
+      chatLoadingMore = true
+      // Get the ID of the oldest message
+      const oldestMessageId = chatHistory[0]?.id
+      if (!oldestMessageId) return
+
+      const resp = await window.api.getChatHistoryPage(selectedTopic.id, oldestMessageId, pageSize)
+      const moreMessages = resp.messages
+      chatExhausted = resp.atStart
+      if (moreMessages.length > 0) {
+        // Prepend the older messages to the history
+        chatHistory = [...moreMessages, ...chatHistory]
+      }
+    } catch (err) {
+      console.error('Error loading more chat messages:', err)
+    } finally {
+      chatLoadingMore = false
+    }
   }
 
   async function deleteFile(fileId) {
@@ -101,26 +177,53 @@
     }
   }
 
-  const handleChatKeyDown = async (event) => {
-    if (event.key === 'Enter') {
-      await sendChat()
-    }
-  }
-
   const sendChat = async () => {
-    if (!selectedTopic || !question.trim()) return
+    if (!selectedTopic || !question.trim() || chatLoading) return
 
     try {
-      responseString = await window.api.chat(
+      chatLoading = true
+      const response = await window.api.chat(
         selectedModel,
         selectedTopic.id,
         files.map(f => f.id),
         question
       )
+      
+      // Refresh chat history to include the new message and response
+      await fetchChatHistory(selectedTopic.id)
+      responseString = ''
     } catch (error) {
       responseString = error.message
       throw error
+    } finally {
+      chatLoading = false
     }
+  }
+
+  const handleOpenQuiz = (message) => {
+    try {
+      quiz = JSON.parse(message.content)
+      active = 'quiz'
+    } catch (err) {
+      console.error('Failed to parse quiz:', err)
+    }
+  }
+
+  const handleOpenFlashcards = (message) => {
+    try {
+      flashcards = JSON.parse(message.content).map(card => ({
+        ...card,
+        flipped: false
+      }))
+      active = 'flashcards'
+    } catch (err) {
+      console.error('Failed to parse flashcards:', err)
+    }
+  }
+
+  const handleOpenSummary = (message) => {
+    quickSummary = message.content
+    active = 'summary'
   }
 
   const generateQuiz = async () => {
@@ -137,6 +240,7 @@
         10,
         'hard'
       )
+      await fetchChatHistory(selectedTopic.id)
     } catch (error) {
       responseString = error.message
       setTimeout(() => {
@@ -167,6 +271,7 @@
         ...card,
         flipped: false
       }))
+      await fetchChatHistory(selectedTopic.id)
     } catch (error) {
       responseString = error.message
       setTimeout(() => {
@@ -190,6 +295,7 @@
         selectedTopic.id,
         files.map(f => f.id)
       )
+      await fetchChatHistory(selectedTopic.id)
     } catch (error) {
       responseString = error.message
       setTimeout(() => {
@@ -213,6 +319,7 @@
         selectedTopic.id,
         files.map(f => f.id)
       )
+      await fetchChatHistory(selectedTopic.id)
     } catch (error) {
       responseString = error.message
       setTimeout(() => {
@@ -248,10 +355,9 @@
       </div>
     </div>
 
-    <div class="body-layout">
+    <div class="body-layout" class:grid-bg={active !== 'timer'}>
       <main
         class="page-content"
-        class:grid-bg={active !== 'timer'}
       >
         {#if active !== 'timer'}
           <FloatingTimer />
@@ -311,36 +417,25 @@
           </section>
 
         {:else if active === 'chat'}
-          <section class="panel">
-            <div class="section-header">
-              <h2>Chat</h2>
-              <p>Ask questions about the files in your selected topic.</p>
-            </div>
-
-            <div class="using-text">
-              Using {selectedModel || 'None'}
-            </div>
-
-            <div class="chat-row">
-              <Textfield
-                class="chat-input"
-                bind:value={question}
-                onkeydown={handleChatKeyDown}
-                disabled={!selectedTopic}
-              />
-              <Button onclick={sendChat} disabled={!selectedTopic}>Send</Button>
-            </div>
-
-            {#if !selectedTopic}
-              <p class="helper-text">Please select a topic first.</p>
-            {/if}
-
-            {#if responseString}
-              <div class="response-block">
-                <p>{responseString}</p>
-              </div>
-            {/if}
-          </section>
+          <Chat
+            {selectedTopic}
+            {selectedModel}
+            {chatHistory}
+            bind:ignoreScroll
+            bind:question
+            bind:responseString
+            bind:chatInitialLoad
+            chatIsSelected={active === 'chat'}
+            loadedAllChat={chatExhausted}
+            scrollableContainer={window}
+            loading={chatLoading}
+            loadingMore={chatLoadingMore}
+            onSendChat={sendChat}
+            onLoadMoreMessages={loadMoreChatMessages}
+            onOpenQuiz={handleOpenQuiz}
+            onOpenFlashcards={handleOpenFlashcards}
+            onOpenSummary={handleOpenSummary}
+          />
 
         {:else if active === 'summary'}
           <section class="panel">
@@ -517,14 +612,20 @@
 </div>
 
 <style>
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
   .app-shell {
-    min-height: 100vh;
+    height: 100vh;
+    /* min-height: 100vh; */
     background: white;
   }
 
   .main {
     margin-left: 220px;
-    min-height: 100vh;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     transition: margin-left 0.25s ease;
@@ -535,16 +636,24 @@
   }
 
   .top-nav {
+    position: fixed;
+    top: 0;
+    left: 220px;
+    right: 0;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    width: 100%;
+    z-index: 100;
     padding: 10px 16px;
     border-bottom: 2px solid #5d80c4;
     background: white;
     box-sizing: border-box;
     gap: 16px;
     flex-shrink: 0;
+  }
+
+  .main.collapsed .top-nav {
+    left: 72px;
   }
 
   .nav-left {
@@ -564,8 +673,11 @@
 
   .body-layout {
     flex: 1;
-    min-height: 0;
+    min-height: calc(100vh - 60px);
     display: flex;
+    margin-top: var(--top-nav-height, 60px);
+    height: calc(100vh - 60px);
+    overflow: hidden;
   }
 
   .page-content {
@@ -575,7 +687,10 @@
     overflow: auto;
     padding: 24px;
     box-sizing: border-box;
-    background-color: #ffffff;
+    /* background-color: #ffffff; */
+    height: 100%;
+    /* min-height: 100vh; */
+    overflow-y: auto;
   }
 
   .grid-bg {

@@ -70,6 +70,12 @@ const api = {
   },
   generateDetailedSummary: async (model, topicId, fileIds) => {
     return await electronAPI.ipcRenderer.invoke('generate-detailed-summary', { model, topicId, fileIds })
+  },
+  getChatHistory: async (topicId, pageSize) => {
+    return await electronAPI.ipcRenderer.invoke('get-chat-history-page', { topicId, beforeId: null, pageSize })
+  },
+  getChatHistoryPage: async (topicId, beforeId, pageSize) => {
+    return await electronAPI.ipcRenderer.invoke('get-chat-history-page', { topicId, beforeId, pageSize })
   }
 }
 

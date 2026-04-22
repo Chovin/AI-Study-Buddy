@@ -240,6 +240,25 @@ ipcMain.handle('delete-topic', async (_, topicId) => {
   }
 });
 
+ipcMain.handle('get-chat-history-page', async (_, { topicId, beforeId, pageSize }) => {
+  try {
+    const history = await db.getChatHistoryPageBeforeId(topicId, beforeId, pageSize);
+    if (history.length < pageSize) {
+      // If we have fewer results than requested, it means we've reached the beginning
+      return {
+        messages: history,
+        atStart: true
+      };
+    }
+    return {
+      messages: history,
+      atStart: false
+    };
+  } catch (err) {
+    throw new Error(err.message);
+  }
+});
+
 ipcMain.handle('chat', async (_, { model, topicId, fileIds, prompt }) => {
   try {
     console.log('Received chat request:', { topicId, fileIds, prompt })
