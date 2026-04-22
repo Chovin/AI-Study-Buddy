@@ -125,6 +125,26 @@ class Database {
         encrypted_api_key TEXT NOT NULL
       )
     `);
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS chat_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        topic_id INTEGER NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        files_referenced TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (topic_id) REFERENCES topics (id)
+      )
+    `);
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS summaries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        topic_id INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (topic_id) REFERENCES topics (id)
+      )
+    `);
   }
 
   // Helper to promisify database operations
@@ -278,6 +298,99 @@ class Database {
     const query = `SELECT * FROM users WHERE email = ?`;
     const users = await this.allAsync(query, [email]);
     return users[0]; // Return the first user found (should be unique)
+  }
+
+  async saveChatMessage(topicId, role, content, filesReferenced = null) {
+    const query = `
+      INSERT INTO chat_history (topic_id, role, content, files_referenced, timestamp)
+      VALUES (?, ?, ?, ?, datetime('now'))
+    `;
+    const filesJson = filesReferenced ? JSON.stringify(filesReferenced) : null;
+    return await this.runAsync(query, [topicId, role, content, filesJson]);
+  }
+
+  async getRecentSummary(topicId) {
+    const query = `
+      SELECT id, topic_id, content, timestamp
+      FROM summaries
+      WHERE topic_id = ?
+      ORDER BY timestamp DESC
+      LIMIT 1
+    `;
+    const results = await this.allAsync(query, [topicId]);
+    return results[0] || null;
+  }
+
+  async saveSummary(topicId, content) {
+    const query = `
+      INSERT INTO summaries (topic_id, content, timestamp)
+      VALUES (?, ?, datetime('now'))
+    `;
+    return await this.runAsync(query, [topicId, content]);
+  }
+
+  async getChatHistoryAfterTimestamp(topicId, timestamp) {
+    const query = `
+      SELECT id, topic_id, role, content, timestamp
+      FROM chat_history
+      WHERE topic_id = ? AND timestamp > ?
+      ORDER BY timestamp ASC
+    `;
+    return await this.allAsync(query, [topicId, timestamp]);
+  }
+
+  async getChatHistoryPageBeforeId(topicId, beforeId, pageSize) {
+    console.log(`Fetching chat history for topic ${topicId} before message ID ${beforeId} with page size ${pageSize}`)
+    if (beforeId === null) {
+      console.log('Fetching most recent messages since beforeId is null')
+      // If beforeId is null, return the most recent messages
+      const query = `
+        SELECT id, topic_id, role, content, files_referenced, timestamp
+        FROM chat_history
+        WHERE topic_id = ?
+        ORDER BY id DESC
+        LIMIT ?
+      `;
+      const results = await this.allAsync(query, [topicId, pageSize]);
+      return results.reverse(); // reverse to return in chronological order
+    }
+
+    const query = `
+      SELECT id, topic_id, role, content, files_referenced, timestamp
+      FROM chat_history
+      WHERE topic_id = ? AND id < ?
+      ORDER BY id DESC
+      LIMIT ?
+    `;
+    const results = await this.allAsync(query, [topicId, beforeId, pageSize]);
+    return results.reverse(); // reverse to return in chronological order
+  }
+
+  async saveGeneratedContent(topicId, role, content, filesReferenced = null) {
+    // Generic method to save quizzes, flashcards, and content summaries
+    // role should be one of: 'quiz', 'flashcard', 'content_summary'
+    return await this.saveChatMessage(topicId, role, content, filesReferenced);
+  }
+
+  async getContentByRole(topicId, role, limit = 10) {
+    const query = `
+      SELECT id, topic_id, role, content, files_referenced, timestamp
+      FROM chat_history
+      WHERE topic_id = ? AND role = ?
+      ORDER BY timestamp DESC
+      LIMIT ?
+    `;
+    return await this.allAsync(query, [topicId, role, limit]);
+  }
+
+  async getAllChatHistory(topicId) {
+    const query = `
+      SELECT id, topic_id, role, content, files_referenced, timestamp
+      FROM chat_history
+      WHERE topic_id = ?
+      ORDER BY timestamp ASC
+    `;
+    return await this.allAsync(query, [topicId]);
   }
 }
 

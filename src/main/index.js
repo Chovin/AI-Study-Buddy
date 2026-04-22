@@ -78,6 +78,7 @@ app.whenReady().then(() => {
 
   db = new Database();
   app.db = db;
+  llmApi.setDatabase(db);
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -239,6 +240,25 @@ ipcMain.handle('delete-topic', async (_, topicId) => {
   }
 });
 
+ipcMain.handle('get-chat-history-page', async (_, { topicId, beforeId, pageSize }) => {
+  try {
+    const history = await db.getChatHistoryPageBeforeId(topicId, beforeId, pageSize);
+    if (history.length < pageSize) {
+      // If we have fewer results than requested, it means we've reached the beginning
+      return {
+        messages: history,
+        atStart: true
+      };
+    }
+    return {
+      messages: history,
+      atStart: false
+    };
+  } catch (err) {
+    throw new Error(err.message);
+  }
+});
+
 ipcMain.handle('chat', async (_, { model, topicId, fileIds, prompt }) => {
   try {
     console.log('Received chat request:', { topicId, fileIds, prompt })
@@ -248,11 +268,10 @@ ipcMain.handle('chat', async (_, { model, topicId, fileIds, prompt }) => {
     console.log('Chat request:', { topicId, fileIds, prompt, fileObjs })
     const response = await llmApi.chatWithFileContext({
       model,
+      topicId,
       files: fileObjs,
-      messages: [
-        { role: 'system', content: `You are a helpful assistant and study buddy with the purpose of helping the user study by answering questions about the provided context from uploaded documents.` },
-        { role: 'user', content: prompt }
-      ]
+      systemMessage: `You are a helpful assistant and study buddy with the purpose of helping the user study by answering questions about the provided context from uploaded documents.`,
+      promptMessage: prompt
     })
     console.log(response);
     return response;
@@ -269,9 +288,10 @@ async function generateQuiz(model, topicId, fileIds, numberOfQuestions, difficul
     const files = (await db.getFilesByTopic(topicId)).filter(f => fileIds.includes(f.id))
     let response = await llmApi.chatWithFileContext({
       model,
+      topicId,
+      saveToHistory: false,
       files,
-      messages: [
-        { role: 'system', content: `
+      systemMessage: `
 You are a study assistant that generates quizzes from provided document context.
 
 Instructions:
@@ -316,9 +336,8 @@ Format:
     "explanation": "<brief explanation for the correct answer>"
   }
 ]
-        ` },
-        { role: 'user', content: `generate a quiz with ${numberOfQuestions} ${difficulty}-difficulty questions`}
-      ]
+      `,
+      promptMessage: `generate a quiz with ${numberOfQuestions} ${difficulty}-difficulty questions`
     })
     console.log(response)
     response = response.trim()
@@ -336,12 +355,61 @@ Format:
     response = response.replaceAll(/"\[\d+\] ?/g, '"')
     // don't just remove these intances because sometimes the llm
     // references the context files as [1], etc
-    if (response.match(/\[\d+\]/)) {
-      throw new Error("Incorrectly formatted quiz")
+
+    // this happens so often, maybe we just live with it.. or remove all instances..
+    // if (response.match(/\[\d+\]/)) {
+    //   throw new Error("Incorrectly formatted quiz")
+    // }
+
+    let quiz
+    
+    try {
+      quiz = JSON.parse(response)
+    } catch (err) {
+      const matches = response.matchAll(/^((#* ?\**(question)? ?(?<qn>\d+)\.?\**:?\**\n*(?<question>.*)$)|(#* ?\**(answer)\.?\**:?\**\s*\n*\**( ?\(?(?<answerchoice>[abcd1234])[.)] ?)?\n*(?<answer>.*)$)|(\** ?\(?(?<cn>[abcd1234])[.)] (?<choice>.*))|(#* ?\**(explanation)\.?\**:\**\n*(?<explanation>.*)$))/gim)
+      quiz = []
+      let currentQuestion = null
+      for (const match of matches) {
+        if (match.groups.question) {
+          if (currentQuestion) {
+            quiz.push(currentQuestion)
+          }
+          currentQuestion = {
+            question: match.groups.question.trim(),
+            choices: [],
+            answer: null,
+            explanation: null
+          }
+        } else if (match.groups.choice) {
+          currentQuestion.choices.push(match.groups.choice.trim())
+        } else if (match.groups.answer || match.groups.answerchoice) {
+          let answerIndex
+          if (match.groups.answerchoice) {
+            const answerLetter = match.groups.answerchoice.trim()[0].toLowerCase()
+            if (!['a', 'b', 'c', 'd'].includes(answerLetter)) {
+              answerIndex = parseInt(answerLetter) - 1
+            } else {
+              answerIndex = answerLetter.charCodeAt(0) - 'a'.charCodeAt(0)
+            }
+          } else {
+            answerIndex = currentQuestion.choices.indexOf(match.groups.answer.trim())
+          }
+          if (answerIndex !== -1) {
+            currentQuestion.answer = answerIndex
+          }
+        } else if (match.groups.explanation) {
+          currentQuestion.explanation = match.groups.explanation.trim()
+        }
+      }
+      if (currentQuestion) {
+        quiz.push(currentQuestion)
+      }
     }
-    const quiz = JSON.parse(response)
-    if (quiz.some(q => !q.question.trim()) || quiz.some(q => q.choices.some(v => !v.trim())) || quiz.some(q => !q.explanation.trim())) {
-      throw new Error("Empty question, answers, or explanation")
+    if (quiz.some(q => !q.question.trim()) || quiz.some(q => q.choices.some(v => !v.trim()) || quiz.some((q) => q.answer === null || q.answer < 0 || q.answer > q.choices.length - 1))) {
+      throw new Error("Empty question or answers")
+    }
+    if (quiz.length !== numberOfQuestions) {
+      throw new Error(`Quiz is the wrong size. likely incorrectly formatted.`)
     }
     return quiz
   } catch (err) {
@@ -367,6 +435,10 @@ ipcMain.handle('generate-quiz', async (_, { model, topicId, fileIds, numberOfQue
         if (qs[q.question]) throw new Error('Duplicate question')
         qs[q.question] = true
       });
+      
+      // Save quiz to database
+      await db.saveGeneratedContent(topicId, 'quiz', JSON.stringify(quiz), fileIds || []);
+      
       finishTask()
       return quiz
     } catch (error) {
@@ -388,11 +460,10 @@ async function generateFlashcards(model, topicId, fileIds, numberOfCards, diffic
 
     let response = await llmApi.chatWithFileContext({
       model,
+      topicId,
+      saveToHistory: false,
       files,
-      messages: [
-        {
-          role: 'system',
-          content: `
+      systemMessage: `
 You are a study assistant that generates flashcards from provided document context.
 
 Instructions:
@@ -419,13 +490,8 @@ Format:
     "back": "<answer or explanation>"
   }
 ]
-          `
-        },
-        {
-          role: 'user',
-          content: `generate ${numberOfCards} ${difficulty}-difficulty flashcards`
-        }
-      ]
+        `,
+      promptMessage: `generate ${numberOfCards} ${difficulty}-difficulty flashcards`
     })
 
     console.log(response)
@@ -446,11 +512,45 @@ Format:
     response = response.replaceAll(/<\/?(card|p) ?\d*\/?>/g, "")
     response = response.replaceAll(/"\[\d+\] ?/g, '"')
 
-    if (response.match(/\[\d+\]/)) {
-      throw new Error("Incorrectly formatted flashcards")
+    // this happens so often, maybe we just live with it.. or remove all instances..
+    // if (response.match(/\[\d+\]/)) {
+    //   throw new Error("Incorrectly formatted flashcards")
+    // }
+
+    let flashcards;
+
+    // try make sure it's json
+    try {
+      flashcards = JSON.parse(response)
+    } catch (err) {
+      // if not, recover if it's question/front: answer/back: pairs
+      let matches = response.matchAll(/\**((?<front>question|front)|(?<back>answer|back))\** ?\d*:\** (?<content>.*)/gi)
+      flashcards = []
+      let card = {}
+      let front = true
+      matches.forEach(m => {
+        if (front && m.groups.front) {
+          card.front = m.groups.content
+        } else if (!front && m.groups.back) {
+          card.back = m.groups.content
+          flashcards.push(card)
+          card = {}
+        } else {
+          // if we get a back without a front or vice versa, the format is wrong
+          throw new Error("Incorrectly formatted flashcards. " + err)
+        }
+        front = !front
+      });
+      if (flashcards.length !== numberOfCards) {
+        throw new Error("Incorrectly formatted flashcards. Couldn't recover enough flashcards from response. " + err)
+      }
     }
 
-    const flashcards = JSON.parse(response)
+    // check if each flashcard is just an array of 2 strings
+    if (flashcards.every(f => Array.isArray(f) && f.length === 2)) {
+      // incorrect format but we can recover
+      flashcards = flashcards.map(f => ({ front: f[0], back: f[1] })) 
+    }
 
     if (
       flashcards.some(f => !f.front.trim()) ||
@@ -488,6 +588,9 @@ ipcMain.handle('generate-flashcards', async (_, { model, topicId, fileIds, numbe
         seen[f.front] = true
       })
 
+      // Save flashcards to database
+      await db.saveGeneratedContent(topicId, 'flashcard', JSON.stringify(flashcards), fileIds || []);
+
       finishTask()
       return flashcards
     } catch (error) {
@@ -509,9 +612,9 @@ async function generateSummaryBase(model, topicId, fileIds, style) {
   try {
     const files = (await db.getFilesByTopic(topicId)).filter(f => fileIds.includes(f.id))
 
-    let prompt = ''
+    let systemMessage = ''
     if (style === 'quick') {
-      prompt = `
+      systemMessage = `
 You are a study assistant that creates concise summaries from provided document context.
 
 Instructions:
@@ -525,7 +628,7 @@ Output rules:
 - Do not include any text outside the summary.
 - Use headers and bullets only when helpful.`
     } else {
-      prompt = `
+      systemMessage = `
 You are a study assistant that creates in-depth summaries from provided document context.
 
 Instructions:
@@ -542,17 +645,11 @@ Output rules:
 
     let response = await llmApi.chatWithFileContext({
       model,
+      topicId,
+      saveToHistory: false,
       files,
-      messages: [
-        {
-          role: 'system',
-          content: prompt
-        },
-        {
-          role: 'user',
-          content: `Create a ${style} summary of the provided documents.`
-        }
-      ]
+      systemMessage,
+      promptMessage: `Create a ${style} summary of the provided documents.`
     })
 
     console.log(response)
@@ -571,6 +668,9 @@ Output rules:
     if (!response) {
       throw new Error("Empty summary generated")
     }
+
+    // Save content summary to database
+    await db.saveGeneratedContent(topicId, 'content_summary', response, fileIds || []);
 
     return response
   } catch (err) {

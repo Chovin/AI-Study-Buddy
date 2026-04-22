@@ -10,6 +10,7 @@ import path from 'path'
 import mime from 'mime-types'
 import kill from 'tree-kill'
 import { EventSource } from 'eventsource'
+import { tokenManager } from './tokenManager'
 
 const isDev = !app.isPackaged
 
@@ -43,6 +44,11 @@ class LLMInterface {
 
     this.fileProcessingQueue = new AsyncQueue()
     this.currentFileProcessing = null
+    this.db = null
+  }
+
+  setDatabase(db) {
+    this.db = db
   }
 
   get models() {
@@ -689,11 +695,62 @@ class LLMInterface {
     await runCommand("ollama", ["signin"])
   }
 
-  async chatWithFileContext({files = [], messages = [], model = null}) {
+  async chatWithFileContext({files = [], systemMessage = null, promptMessage = null, model = null, topicId = null, saveToHistory = true}) {
     if (!this.running) throw new Error("LLM not loaded yet")
 
+    model = model || this.selectedModel
+
+    if (!(topicId && this.db)) { throw new Error("topicId and database are required to fetch chat history") }
+
+    // Fetch chat history from database after the most recent summary
+    // Get the most recent summary
+    const recentSummary = await this.db.getRecentSummary(topicId)
+    
+    let chatMessages = []
+    if (recentSummary) {
+      // Get all chat messages after the summary
+      chatMessages = await this.db.getChatHistoryAfterTimestamp(topicId, recentSummary.timestamp)
+
+      // Prepend the summary as a system message
+      systemMessage = `${systemMessage ? systemMessage : ""}
+
+Here is a condensed memory of earlier messages:
+---
+${recentSummary.content}
+---
+
+Use this as context, but prioritize recent messages.
+`.trim()
+    } else {
+      // No summary exists, get all chat history
+      chatMessages = await this.db.getAllChatHistory(topicId)
+    }
+
+    // Build messages array from chat history and new prompt
+    let messages = []
+
+    // Add system message
+    if (systemMessage) {
+      messages.unshift({ role: 'system', content: systemMessage })
+    }
+      
+    // Filter to only include user and assistant messages (skip generated content)
+    for (const msg of chatMessages) {
+      if (msg.role === 'user' || msg.role === 'assistant') {
+        messages.push({ role: msg.role, content: msg.content })
+      }
+    }
+    
+
+    // Add the new prompt message
+    if (promptMessage) {
+      messages.push({ role: 'user', content: promptMessage })
+    }
+
+    // If model has a context window, check and summarize if needed
+    messages = await this._ensureContextWithinLimit(messages, model, topicId)
+
     const url = `${WEBUI_BASE_URL}/chat/completions`
-    model = model || this.selectModel
 
     const fileNames = files.map(f => {
       return `- ${f.file_name} (id: ${f.webui_id})`
@@ -702,20 +759,25 @@ class LLMInterface {
     const filePrompt = `
 You have access to the following files:
 ${fileNames}
-When referencing information, use the filename explicitely.
+When referencing information, use the filename explicitely like "According to filename.pdf, ...".
+Do NOT use citation brackets like [1], [2].
 Do NOT say "the context".
 `
     messages = JSON.parse(JSON.stringify(messages)) // deep copy to avoid mutating original
     const systemMsg = messages.find(m => m.role === 'system')
-    systemMsg.content = filePrompt + "\n\n" + systemMsg.content
+    if (systemMsg) {
+      systemMsg.content = `${systemMsg.content}\n\n${filePrompt}`
+    } else {
+      // If no system message was provided, create one with the file prompt
+      messages.unshift({ role: 'system', content: filePrompt })
+    }
 
     files = files.map(f => {
       return { type: 'file', id: f.webui_id }
     })
 
     const payload = { model, messages, files, stream: false };
-    
-    console.log('sending to webui', payload)
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -758,7 +820,151 @@ Do NOT say "the context".
       }
       assistantReply = "The LLM didn't return anything"
     }
+
+    // Save chat history only if saveToHistory is true
+    if (saveToHistory) {
+      const fileIds = files.map(f => f.id);
+      // Save user message (the prompt message we just sent)
+      if (promptMessage) {
+        await this.db.saveChatMessage(topicId, 'user', promptMessage, fileIds);
+      }
+      // Save assistant response
+      await this.db.saveChatMessage(topicId, 'assistant', assistantReply, fileIds);
+    }
+
     return assistantReply;
+  }
+
+  async _ensureContextWithinLimit(messages, model, topicId = null) {
+    const contextWindow = this._models[model]?.context || 128
+    if (!contextWindow) {
+      return messages
+    }
+
+    // Context windows in models.js are in thousands (e.g., 128 = 128k tokens)
+    // use 85% of the context window as the threshold to start summarizing, 
+    // to leave room for any prompt overhead and incorrect tokenization estimation
+    const contextPerc = 0.85
+    const maxTokens = contextWindow * 1000 * contextPerc
+
+    const totalTokens = messages.reduce((acc, msg) => {
+      return acc + tokenManager.countTokens(model, msg.content)
+    }, 0)
+
+    // If we're within the context window, return messages as-is
+    if (totalTokens <= maxTokens) {
+      return messages
+    }
+
+    console.log(`Context exceeded: ${totalTokens} tokens > ${maxTokens} window, summarizing oldest messages`)
+
+    // Find non-system messages to summarize
+    const systemMsg = messages.find(m => m.role === 'system')
+    const chatMessages = messages.filter(m => m.role !== 'system')
+
+    if (chatMessages.length === 0) {
+      throw new Error(`No chat messages to summarize, but context is still too large. That means the system message is too large. This shouldn't happen.`)
+    }
+
+    // Recursively summarize oldest messages until we're within context
+    const summarizerModel = this.summarizerModel
+    const summarizerWindow = this._models[summarizerModel]?.context || 128
+    const summarizerMaxTokens = summarizerWindow * 1000 * contextPerc
+
+    // Start with all messages and recursively summarize the oldest half
+    // probably bad code smell to pass something to mutate but eh, it's easy
+    const flags = { summary: null }
+    const newMessages = await this._recursivelySummarize(chatMessages, summarizerModel, summarizerMaxTokens, model, maxTokens, systemMsg, flags)
+    if (flags.summary) {
+      await this.db.saveSummary(topicId, flags.summary)
+    }
+    return newMessages
+  }
+
+  async _recursivelySummarize(messages, summarizerModel, summarizerMaxTokens, model, maxTokens, systemMsg, flagsWritable) {
+    const systemMsgTokens = systemMsg ? tokenManager.countTokens(model, systemMsg.content) : 0
+    if (systemMsgTokens >= maxTokens) {
+      throw new Error(`System message alone (${systemMsgTokens} tokens) exceeds the maximum allowed tokens (${maxTokens}). This shouldn't happen.`)
+    }
+    const totalTokens = messages.reduce((acc, msg) => acc + tokenManager.countTokens(model, msg.content), 0) + systemMsgTokens
+
+    // If we're within limits, return messages as-is
+    if (totalTokens <= maxTokens) {
+      const result = systemMsg ? [systemMsg] : []
+      result.push(...messages)
+      return result
+    }
+
+    // If only one message, need to summarize it
+    if (messages.length <= 1) {
+      const summary = await this._summarizeMessages(messages, summarizerModel, summarizerMaxTokens, flagsWritable)
+      // check again to see if it's still too large and keep summarizing as needed
+      return await this._recursivelySummarize([summary], summarizerModel, summarizerMaxTokens, model, maxTokens, systemMsg, flagsWritable)
+    }
+
+    // Split messages in half and summarize the oldest half
+    const mid = Math.floor(messages.length / 2)
+    const oldestHalf = messages.slice(0, mid)
+    const newestHalf = messages.slice(mid)
+
+    // Summarize the oldest half
+    const summary = await this._summarizeMessages(oldestHalf, summarizerModel, summarizerMaxTokens, flagsWritable)
+    const combinedNewerHalf = [summary, ...newestHalf]
+
+    // Recursively process the old half summary + the newer half until it fits in the context window
+    return await this._recursivelySummarize(combinedNewerHalf, summarizerModel, summarizerMaxTokens, model, maxTokens, systemMsg, flagsWritable)
+  }
+
+  async _summarizeMessages(messages, summarizerModel, summarizerMaxTokens, flagsWritable) {
+    const messageString = messages.map((m) => `${m.role}: ${m.content}`).join('\n\n')
+    let summaryPrompt = `Summarize the following conversation history. Be concise but preserve important information:
+
+${messageString}
+
+Summary:`
+
+    // Check if prompt fits in summarizer's context window
+    // Context windows are in thousands (e.g., 128 = 128k tokens)
+    const promptTokens = tokenManager.countTokens(summarizerModel, summaryPrompt)
+
+    if (promptTokens > summarizerMaxTokens) {
+      // If prompt is too large, recursively summarize the older half,
+      // then combine with the newer half to preserve recent context
+      const mid = Math.floor(messages.length / 2)
+      const olderHalf = messages.slice(0, mid)
+      const newerHalf = messages.slice(mid)
+
+      // Recursively summarize the older half
+      const olderHalfSummary = await this._summarizeMessages(olderHalf, summarizerModel, summarizerMaxTokens, flagsWritable)
+
+      // Prepend the older summary to the newer half and recursively process
+      // ensures we keep trying to fit everything while preserving recent context
+      const combinedMessages = [olderHalfSummary, ...newerHalf]
+      return await this._summarizeMessages(combinedMessages, summarizerModel, summarizerMaxTokens, flagsWritable)
+    }
+
+    const result = await this.chat({
+      model: summarizerModel,
+      messages: [
+        { role: 'system', content: "Summarize the following conversation. Be concise, preserve key facts, and avoid repetition." },
+        { role: 'user', content: summaryPrompt }
+      ],
+      stream: false
+    })
+
+    let summaryContent = 
+      result?.choices?.[0]?.message?.content || 
+      result?.message?.content || 
+      result?.message || 
+      ''
+
+    summaryContent = `This is a summary of the previous conversation:\n\n${summaryContent.trim()}`
+
+    // this should keep rewriting itself and end up as the last one
+    flagsWritable.summary = summaryContent
+
+
+    return { role: 'assistant', content: summaryContent }
   }
 
   async chat(args) {
@@ -770,6 +976,7 @@ Do NOT say "the context".
         await this.promptLogin()
         throw error
       }
+      throw error
     }
   }
 }
