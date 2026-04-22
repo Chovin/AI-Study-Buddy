@@ -759,7 +759,8 @@ Use this as context, but prioritize recent messages.
     const filePrompt = `
 You have access to the following files:
 ${fileNames}
-When referencing information, use the filename explicitely.
+When referencing information, use the filename explicitely like "According to filename.pdf, ...".
+Do NOT use citation brackets like [1], [2].
 Do NOT say "the context".
 `
     messages = JSON.parse(JSON.stringify(messages)) // deep copy to avoid mutating original
