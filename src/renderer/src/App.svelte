@@ -16,6 +16,8 @@
   import CircularProgress from '@smui/circular-progress'
   import { onMount } from 'svelte'
 
+  import { renderMarkdown } from './utils/markdown.js'
+
   import 'svelte-material-ui/themes/svelte.css'
   import 'material-icons/iconfont/material-icons.css'
 
@@ -525,14 +527,14 @@
             {#if quickSummary}
               <div class="summary-block">
                 <h3>Quick Summary</h3>
-                <div>{@html quickSummary.replace(/\n/g, '<br>')}</div>
+                <div class="markdown-content">{@html renderMarkdown(quickSummary)}</div>
               </div>
             {/if}
 
             {#if detailedSummary}
               <div class="summary-block">
                 <h3>Detailed Summary</h3>
-                <div>{@html detailedSummary.replace(/\n/g, '<br>')}</div>
+                <div class="markdown-content">{@html renderMarkdown(detailedSummary)}</div>
               </div>
             {/if}
           </section>
@@ -571,9 +573,9 @@
                   onclick={() => (f.flipped = !f.flipped)}
                 >
                   {#if f.flipped}
-                    <h3>{f.back}</h3>
+                    <div class="flashcard-content markdown-content">{@html renderMarkdown(f.back)}</div>
                   {:else}
-                    <h3>{f.front}</h3>
+                    <div class="flashcard-content markdown-content">{@html renderMarkdown(f.front)}</div>
                   {/if}
                 </div>
               {/each}
@@ -611,7 +613,7 @@
 
             {#each quiz as q, qi (q.question)}
               <div class="quiz-card">
-                <h3>{q.question}</h3>
+                <h3 class="markdown-content">{@html renderMarkdown(q.question)}</h3>
 
                 <form>
                   {#each q.choices as c, i (c)}
@@ -630,14 +632,15 @@
                         value={i}
                         name={qi}
                       />
-                      <label for={`${qi}_${i}`}>{c}</label>
+                      <label for={`${qi}_${i}`} class="markdown-content">{@html renderMarkdown(c)}</label>
                     </div>
                   {/each}
                 </form>
 
                 {#if q.answered && q.explanation}
                   <div class="explanation">
-                    <p><strong>Explanation:</strong> {q.explanation}</p>
+                    <p><strong>Explanation:</strong></p>
+                    <div class="markdown-content">{@html renderMarkdown(q.explanation)}</div>
                   </div>
                 {/if}
               </div>
@@ -893,11 +896,15 @@
   }
 
   .choice-row {
+    display: flex;       /* Aligns children in a row */
+    align-items: center;  /* Centers the button and text vertically */
+    gap: 12px;           /* Adds space between the button and the text */
     padding: 10px 12px;
     border-radius: 8px;
     margin-bottom: 8px;
     cursor: pointer;
-  }
+}
+
 
   .answer {
     background-color: rgb(125, 222, 125);
@@ -913,7 +920,7 @@
 
   .flashcards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 16px;
     margin-top: 20px;
   }
@@ -961,5 +968,87 @@
     margin: 0;
     font-size: 14px;
     color: #333;
+  }
+
+  /* Markdown content styling */
+  .markdown-content {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #333;
+  }
+
+  .markdown-content h1 {
+    font-size: 24px;
+    margin: 16px 0 12px 0;
+    font-weight: 600;
+  }
+
+  .markdown-content h2 {
+    font-size: 20px;
+    margin: 14px 0 10px 0;
+    font-weight: 600;
+  }
+
+  .markdown-content h3 {
+    font-size: 18px;
+    margin: 12px 0 8px 0;
+    font-weight: 600;
+  }
+
+  .markdown-content strong {
+    font-weight: 600;
+  }
+
+  .markdown-content em {
+    font-style: italic;
+  }
+
+  .markdown-content code {
+    background: #f4f4f4;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+  }
+
+  .markdown-content pre {
+    background: #f4f4f4;
+    padding: 12px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 8px 0;
+  }
+
+  .markdown-content pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  .markdown-content ol,
+  .markdown-content ul {
+    margin: 8px 0;
+    padding-left: 24px;
+  }
+
+  .markdown-content li {
+    margin: 4px 0;
+  }
+
+  .markdown-content p {
+    margin: 8px 0;
+  }
+
+  .flashcard-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 12px;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    overflow: hidden;
+    text-align: center;
   }
 </style>

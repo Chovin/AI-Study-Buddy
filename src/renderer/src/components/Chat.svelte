@@ -2,6 +2,7 @@
   import Button from '@smui/button'
   import CircularProgress from '@smui/circular-progress'
   import { tick } from 'svelte'
+  import { renderMarkdown } from '../utils/markdown.js'
 
   let {
     selectedTopic = null,
@@ -229,8 +230,8 @@
         <div 
             class={{message: true, [`${message.role}-message`]: true, ["new-message"]: newMessages.includes(message.id)}} 
             style:animation-delay={`${newMessages.includes(message.id) ? newMessages.indexOf(message.id) * 100 : 0}ms`}>
-          <div class="message-content">
-            {message.content}
+          <div class="message-content markdown-content">
+            {@html renderMarkdown(message.content)}
           </div>
         </div>
       {:else}
@@ -512,5 +513,72 @@
     font-size: 12px;
     margin-bottom: 12px;
     text-align: right;
+  }
+
+  /* Markdown content styling for chat */
+  .message-content.markdown-content h1 {
+    font-size: 18px;
+    margin: 8px 0 4px 0;
+    font-weight: 600;
+  }
+
+  .message-content.markdown-content h2 {
+    font-size: 16px;
+    margin: 6px 0 3px 0;
+    font-weight: 600;
+  }
+
+  .message-content.markdown-content h3 {
+    font-size: 15px;
+    margin: 4px 0 2px 0;
+    font-weight: 600;
+  }
+
+  .message-content.markdown-content strong {
+    font-weight: 600;
+  }
+
+  .message-content.markdown-content em {
+    font-style: italic;
+  }
+
+  .message-content.markdown-content code {
+    background: rgba(0, 0, 0, 0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+  }
+
+  .user-message .message-content.markdown-content code {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .message-content.markdown-content pre {
+    background: #f4f4f4;
+    padding: 8px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 4px 0;
+    font-size: 12px;
+  }
+
+  .message-content.markdown-content pre code {
+    background: none;
+    padding: 0;
+  }
+
+  .message-content.markdown-content ol,
+  .message-content.markdown-content ul {
+    margin: 4px 0;
+    padding-left: 20px;
+  }
+
+  .message-content.markdown-content li {
+    margin: 2px 0;
+  }
+
+  .message-content.markdown-content p {
+    margin: 4px 0;
   }
 </style>
