@@ -82,6 +82,12 @@ const api = {
   },
   loadTimerSettings: async () => {
     return await electronAPI.ipcRenderer.invoke('load-timer-settings')
+  },
+  saveLastModel: async (modelName) => {
+    return await electronAPI.ipcRenderer.invoke('save-last-model', modelName)
+  },
+  getLastModel: async () => {
+    return await electronAPI.ipcRenderer.invoke('get-last-model')
   }
 }
 

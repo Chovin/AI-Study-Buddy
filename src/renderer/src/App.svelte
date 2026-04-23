@@ -188,8 +188,15 @@
       models = await window.api.getModels()
 
       if (!selectedModel) {
-        selectedModel =
-          Object.entries(models).find(([_, o]) => o.summarizer)?.[0] || ''
+        // Try to restore last used model
+        const lastModel = await window.api.getLastModel()
+        if (lastModel && models[lastModel]) {
+          selectedModel = lastModel
+        } else {
+          // Fall back to summarizer model if last model doesn't exist
+          selectedModel =
+            Object.entries(models).find(([_, o]) => o.summarizer)?.[0] || ''
+        }
       }
 
       ollamaReady = true
@@ -198,6 +205,15 @@
     window.api.onModelDownloaded(async () => {
       models = await window.api.getModels()
     })
+  })
+
+  // Save the selected model whenever it changes
+  $effect(() => {
+    if (selectedModel) {
+      window.api.saveLastModel(selectedModel).catch(err => {
+        console.error('Failed to save last model:', err)
+      })
+    }
   })
 
   const handleOnProgressUpdate = (id, attrs) => {

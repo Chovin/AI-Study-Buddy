@@ -168,6 +168,25 @@ ipcMain.handle('download-model', async (_, model) => {
   return success
 })
 
+ipcMain.handle('save-last-model', async (_, modelName) => {
+  try {
+    await db.saveLastSelectedModel(modelName);
+    return true;
+  } catch (err) {
+    console.error('Error saving last selected model:', err);
+    throw new Error(err.message);
+  }
+})
+
+ipcMain.handle('get-last-model', async () => {
+  try {
+    return await db.getLastSelectedModel();
+  } catch (err) {
+    console.error('Error retrieving last selected model:', err);
+    return null;
+  }
+})
+
 ipcMain.handle('create-topic', async (_, topicName) => {
   try {
     await db.createTopic(topicName);

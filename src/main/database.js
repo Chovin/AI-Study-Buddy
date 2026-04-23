@@ -150,7 +150,8 @@ class Database {
         id INTEGER PRIMARY KEY CHECK (id = 1),
         timer_value INTEGER DEFAULT 1500,
         pomodoro_work INTEGER DEFAULT 1500,
-        pomodoro_break INTEGER DEFAULT 300
+        pomodoro_break INTEGER DEFAULT 300,
+        last_selected_model TEXT
       )
     `);
     // Initialize with default values if empty
@@ -158,6 +159,14 @@ class Database {
       INSERT OR IGNORE INTO timer_settings (id, timer_value, pomodoro_work, pomodoro_break)
       VALUES (1, 1500, 1500, 300)
     `);
+    // Add column if it doesn't exist (for backwards compatibility)
+    try {
+      await this.runAsync(`
+        ALTER TABLE timer_settings ADD COLUMN last_selected_model TEXT
+      `);
+    } catch (err) {
+      // Column already exists, ignore error
+    }
   }
 
   // Helper to promisify database operations
@@ -423,6 +432,25 @@ class Database {
     `;
     const results = await this.allAsync(query, []);
     return results[0] || { timer_value: 1500, pomodoro_work: 1500, pomodoro_break: 300 };
+  }
+
+  async saveLastSelectedModel(modelName) {
+    const query = `
+      UPDATE timer_settings
+      SET last_selected_model = ?
+      WHERE id = 1
+    `;
+    return await this.runAsync(query, [modelName]);
+  }
+
+  async getLastSelectedModel() {
+    const query = `
+      SELECT last_selected_model
+      FROM timer_settings
+      WHERE id = 1
+    `;
+    const results = await this.allAsync(query, []);
+    return results[0]?.last_selected_model || null;
   }
 }
 
