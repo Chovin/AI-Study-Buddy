@@ -45,14 +45,13 @@
     min-height: 122px;
     padding: 18px 20px;
     border: 1px solid #2c2c2c;
-    border-radius: 0px;
     background: #fdfbcb;
     box-sizing: border-box;
     z-index: 1000;
   }
 
   .floating-timer.minimized {
-    min-height: 110px;
+    min-height: 122px;
   }
 
   .corner-btn {
@@ -65,6 +64,8 @@
     padding: 0;
     font-size: 22px;
     font-weight: 700;
+    line-height: 1;
+    background: none;
   }
 
   .session-label {
@@ -78,6 +79,8 @@
     font-size: 54px;
     font-weight: 800;
     line-height: 1;
+    margin: 0;
+    padding-right: 20px;
   }
 
   .action-row {
@@ -98,7 +101,74 @@
     justify-content: center;
     cursor: pointer;
   }
-  .mini-btn:hover{
+
+  .mini-btn:hover {
     background: #fbe893;
+  }
+
+  @media (max-width: 900px) {
+    .floating-timer {
+      width: 220px;
+      min-height: 88px;
+      padding: 12px 14px;
+      top: 96px;
+      right: 12px;
+    }
+
+    .floating-timer.minimized {
+      min-height: 88px;
+    }
+
+    .corner-btn {
+      top: 8px;
+      right: 10px;
+      font-size: 18px;
+    }
+
+    .session-label {
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .time-text {
+      font-size: 36px;
+      padding-right: 16px;
+    }
+
+    .action-row {
+      margin-top: 12px;
+      gap: 8px;
+    }
+
+    .mini-btn {
+      width: 84px;
+      height: 34px;
+      font-size: 12px;
+    }
+  }
+
+  @media (max-width: 1400px) {
+    .floating-timer {
+      width: 170px;
+      min-height: 58px;
+      padding: 10px 12px;
+    }
+
+    .floating-timer.minimized {
+      min-height: 58px;
+    }
+
+    .session-label,
+    .action-row,
+    .corner-btn {
+      display: none;
+    }
+
+    .time-text {
+      font-size: 28px;
+      text-align: center;
+      padding-right: 0;
+      width: 100%;
+    }
   }
 </style>

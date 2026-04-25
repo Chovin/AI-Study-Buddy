@@ -159,9 +159,16 @@
     color: white;
   }
 
+  .selected-topics:hover{
+    background: #ef7e76;
+  }
+
   .selected-quiz {
     background: #ef8c4a;
     color: white;
+  }
+  .selected-quiz:hover{
+    background: #f2a36e;
   }
 
   .selected-flashcards {
@@ -169,9 +176,17 @@
     color: #222;
   }
 
+  .selected-flashcards:hover{
+    background: #fae58b;
+  }
+
   .selected-summary {
     background: #5cb35a;
     color: white;
+  }
+
+  .selected-summary:hover{
+    background: #7cc27a;
   }
 
   .selected-chat {
@@ -179,9 +194,17 @@
     color: white;
   }
 
+  .selected-chat:hover{
+    background: #82c0f7;
+  }
+
   .selected-timer {
     background: #d198f7;
     color: white;
+  }
+
+  .selected-timer:hover {
+    background: #daacf8;
   }
 
   .sidebar.collapsed .nav-item {
