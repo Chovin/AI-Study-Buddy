@@ -1,10 +1,49 @@
 <script>
   import { timerStore } from '../../../main/timerStore.js';
   import { Play, Pause, RotateCcw, ChevronUp, ChevronDown } from 'lucide-svelte';
+  import { onMount } from 'svelte';
+  import alarmSrc from '../assets/TimerClockAlarm.mp3';
 
   let editHours = '00';
   let editMinutes = '25';
   let editSeconds = '00';
+
+  let alarm;
+  let previousSeconds = null;
+  let alarmPlayed = false;
+
+  onMount(() => {
+    alarm = new Audio(alarmSrc);
+    alarm.volume = 1.0;
+  });
+
+  function playAlarm() {
+    if (!alarm) return;
+
+    alarm.currentTime = 0;
+    alarm.play().catch((err) => {
+      console.error('Alarm failed to play:', err);
+    });
+  }
+
+  function stopAlarm() {
+    if (!alarm) return;
+
+    alarm.pause();
+    alarm.currentTime = 0;
+  }
+
+  function handleStartPause() {
+    stopAlarm();
+    timerStore.toggleStartPause();
+  }
+
+  function handleReset() {
+    stopAlarm();
+    alarmPlayed = false;
+    previousSeconds = null;
+    timerStore.reset();
+  }
 
   function wrap(value, min, max) {
     if (value > max) return min;
@@ -33,7 +72,7 @@
   }
 
   function handleTypedInput(part, event) {
-    let value = event.currentTarget.value.replace(/\D/g, '').slice(0, 2);
+    const value = event.currentTarget.value.replace(/\D/g, '').slice(0, 2);
 
     if (part === 'hours') editHours = value;
     if (part === 'minutes') editMinutes = value;
@@ -91,6 +130,13 @@
     syncInputsFromTimer();
   }
 
+  function handleModeChange(mode) {
+    stopAlarm();
+    alarmPlayed = false;
+    previousSeconds = null;
+    timerStore.setMode(mode);
+  }
+
   $: displaySeconds = timerStore.getDisplaySeconds($timerStore);
   $: displayTime = timerStore.formatTime(displaySeconds);
   $: timeParts = displayTime.split(':');
@@ -100,25 +146,47 @@
     syncInputsFromTimer();
   }
 
-  // Save timer settings when they change
+  $: {
+    const shouldAlarm =
+      ($timerStore.mode === 'timer' || $timerStore.mode === 'pomodoro') &&
+      $timerStore.isRunning &&
+      previousSeconds !== null &&
+      previousSeconds > 0 &&
+      displaySeconds === 0 &&
+      !alarmPlayed;
+
+    if (shouldAlarm) {
+      playAlarm();
+      alarmPlayed = true;
+    }
+
+    if (displaySeconds > 0) {
+      alarmPlayed = false;
+    }
+
+    previousSeconds = displaySeconds;
+  }
+
   $: if ($timerStore) {
     window.api.saveTimerSettings(
       $timerStore.timerValue,
       $timerStore.pomodoroWork,
       $timerStore.pomodoroBreak
-    ).catch(err => console.error('Failed to save timer settings:', err));
+    ).catch((err) => console.error('Failed to save timer settings:', err));
   }
 </script>
 
 <div class="timer-shell">
   <div class="timer-tabs">
-    <button class:active={$timerStore.mode === 'timer'} onclick={() => timerStore.setMode('timer')}>
+    <button class:active={$timerStore.mode === 'timer'} onclick={() => handleModeChange('timer')}>
       Timer
     </button>
-    <button class:active={$timerStore.mode === 'pomodoro'} onclick={() => timerStore.setMode('pomodoro')}>
+
+    <button class:active={$timerStore.mode === 'pomodoro'} onclick={() => handleModeChange('pomodoro')}>
       Pomodoro
     </button>
-    <button class:active={$timerStore.mode === 'stopwatch'} onclick={() => timerStore.setMode('stopwatch')}>
+
+    <button class:active={$timerStore.mode === 'stopwatch'} onclick={() => handleModeChange('stopwatch')}>
       Stopwatch
     </button>
   </div>
@@ -207,7 +275,7 @@
   </div>
 
   <div class="timer-actions">
-    <button class="action-btn" onclick={timerStore.toggleStartPause}>
+    <button class="action-btn" onclick={handleStartPause}>
       {#if $timerStore.isRunning}
         <Pause size={24} />
       {:else}
@@ -215,7 +283,7 @@
       {/if}
     </button>
 
-    <button class="action-btn" onclick={timerStore.reset}>
+    <button class="action-btn" onclick={handleReset}>
       <RotateCcw size={24} />
     </button>
   </div>
