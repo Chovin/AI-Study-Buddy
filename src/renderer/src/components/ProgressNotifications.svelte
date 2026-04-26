@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte'
 
-  let tasks = $state([]);
+  let tasks = $state([])
   let { onProgressUpdate = null } = $props()
 
   onMount(() => {
@@ -9,16 +9,34 @@
 
     window.api.onProgressUpdate((ts) => {
       tasks = ts.map(([id, { ...attrs }]) => {
-        if (attrs.progress != null) attrs.percent = parseInt(attrs.progress * 100);
+        if (attrs.progress != null) {
+          attrs.percent = parseInt(attrs.progress * 100)
+        }
 
-        if (onProgressUpdate) onProgressUpdate(id, attrs)
+      if (
+        String(attrs?.msg ?? '').includes('Finished Starting Open WebUI') ||
+        String(attrs?.msg ?? '').includes('removing Setting up Open WebUI Server')
+      ) {
+      attrs.webuiReady = true
+}
 
-        if (attrs.status != 'running' && !deleted[id]) {
+if (onProgressUpdate) onProgressUpdate(id, attrs)
+
+        const msg = String(attrs?.msg ?? '')
+        const isOpenWebUI =
+          msg.includes('Starting Open WebUI Server') ||
+          msg.includes('Setting up Open WebUI Server') ||
+          msg.includes('Finished Starting Open WebUI')
+
+        if (attrs.status !== 'running' && !deleted[id]) {
           deleted[id] = true
+
+          const delay = isOpenWebUI ? 8000 : attrs.delay ?? 5000
+
           setTimeout(async () => {
             await window.api.deleteProgressTask(id)
             delete deleted[id]
-          }, attrs.delay ?? 5000)
+          }, delay)
         }
 
         return { id, ...attrs }

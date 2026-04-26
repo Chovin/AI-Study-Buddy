@@ -12,24 +12,38 @@
 
   export let collapsed = false
   export let active = 'topics'
+  export let disabledTabs = []
 
   const items = [
-    { id: 'topics', label: 'Topics', icon: Folder, colorClass: 'selected-topics' },
-    { id: 'quiz', label: 'Quiz', icon: ListCheck, colorClass: 'selected-quiz' },
-    { id: 'flashcards', label: 'Flashcards', icon: SwatchBook, colorClass: 'selected-flashcards' },
-    { id: 'summary', label: 'Summary', icon: NotepadText, colorClass: 'selected-summary' },
-    { id: 'chat', label: 'Chat', icon: MessageSquare, colorClass: 'selected-chat' },
-    { id: 'timer', label: 'Timer', icon: Clock3, colorClass: 'selected-timer' }
+    { id: 'topics', label: 'Topics', icon: Folder },
+    { id: 'quiz', label: 'Quiz', icon: ListCheck },
+    { id: 'flashcards', label: 'Flashcards', icon: SwatchBook },
+    { id: 'summary', label: 'Summary', icon: NotepadText },
+    { id: 'chat', label: 'Chat', icon: MessageSquare },
+    { id: 'timer', label: 'Timer', icon: Clock3 }
   ]
 
   function toggleSidebar() {
     collapsed = !collapsed
   }
+
+  function isDisabled(tabId) {
+    return disabledTabs.includes(tabId)
+  }
+
+  function setActive(tabId) {
+    if (isDisabled(tabId)) return
+    active = tabId
+  }
 </script>
 
 <aside class="sidebar" class:collapsed={collapsed}>
   <div class="sidebar-top">
-    <button class="toggle-btn" on:click={toggleSidebar} aria-label="Toggle sidebar">
+    <button
+      class="toggle-btn"
+      on:click={toggleSidebar}
+      aria-label="Toggle sidebar"
+    >
       {#if collapsed}
         <PanelLeftOpen size={20} />
       {:else}
@@ -41,18 +55,22 @@
   <nav class="nav">
     {#each items as item}
       <button
+        type="button"
         class="nav-item"
         class:active={active === item.id}
+        class:disabled={isDisabled(item.id)}
         class:selected-topics={active === item.id && item.id === 'topics'}
         class:selected-quiz={active === item.id && item.id === 'quiz'}
         class:selected-flashcards={active === item.id && item.id === 'flashcards'}
         class:selected-summary={active === item.id && item.id === 'summary'}
         class:selected-chat={active === item.id && item.id === 'chat'}
         class:selected-timer={active === item.id && item.id === 'timer'}
-        on:click={() => (active = item.id)}
+        disabled={isDisabled(item.id)}
+        on:click={() => setActive(item.id)}
         title={collapsed ? item.label : ''}
       >
         <svelte:component this={item.icon} size={20} />
+
         {#if !collapsed}
           <span>{item.label}</span>
         {/if}
@@ -66,8 +84,6 @@
     position: fixed;
     top: 0;
     left: 0;
-    right: auto;
-    bottom: auto;
     z-index: 1000;
     box-sizing: border-box;
     width: 220px;
@@ -139,7 +155,7 @@
     font-size: 14px;
     text-align: left;
     box-sizing: border-box;
-    transition: background 0.2s ease, color 0.2s ease;
+    transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
   }
 
   .nav-item:hover {
@@ -152,6 +168,15 @@
 
   .nav-item.active svg {
     stroke: currentColor;
+  }
+
+  .nav-item.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .nav-item.disabled:hover {
+    background: transparent;
   }
 
   .selected-topics {
