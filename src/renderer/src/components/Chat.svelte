@@ -3,6 +3,11 @@
   import CircularProgress from '@smui/circular-progress'
   import { tick } from 'svelte'
   import { renderMarkdown } from '../utils/markdown.js'
+  import {
+    ListCheck,
+    SwatchBook,
+    NotepadText
+  } from 'lucide-svelte'
 
   let {
     selectedTopic = null,
@@ -168,6 +173,8 @@
       return {
         type: 'quiz',
         label: 'Generated Quiz',
+        topic: 'quiz',
+        icon: ListCheck,
         onClick: () => onOpenQuiz?.(message)
       }
     }
@@ -175,6 +182,8 @@
       return {
         type: 'flashcard',
         label: 'Generated Flashcards',
+        topic: 'flashcards',
+        icon: SwatchBook,
         onClick: () => onOpenFlashcards?.(message)
       }
     }
@@ -182,6 +191,8 @@
       return {
         type: 'content_summary',
         label: 'Generated Summary',
+        topic: 'summary',
+        icon: NotepadText,
         onClick: () => onOpenSummary?.(message)
       }
     }
@@ -237,22 +248,20 @@
       {:else}
         {#if getContentDisplay(message)}
           <div 
-              class={{message: true, ["content-message"]: true, ["new-message"]: newMessages.includes(message.id)}} 
+              class={{
+                message: true, 
+                ["content-message"]: true, 
+                ["new-message"]: newMessages.includes(message.id)
+              }} 
               style:animation-delay={`${newMessages.includes(message.id) ? newMessages.indexOf(message.id) * 100 : 0}ms`}>
             <div class="message-content">
               <Button
                 variant="raised"
-                class="content-button"
+                class={"content-button " + "selected-" + getContentDisplay(message).topic}
                 onclick={getContentDisplay(message).onClick}
               >
                 <span class="content-icon">
-                  {#if getContentDisplay(message).type === 'quiz'}
-                    <span class="material-icons">quiz</span>
-                  {:else if getContentDisplay(message).type === 'flashcard'}
-                    <span class="material-icons">library_books</span>
-                  {:else if getContentDisplay(message).type === 'content_summary'}
-                    <span class="material-icons">summarize</span>
-                  {/if}
+                  <svelte:component this={getContentDisplay(message).icon} size={20} />
                 </span>
                 <span>{getContentDisplay(message).label}</span>
               </Button>
@@ -427,19 +436,13 @@
     border: 1px solid #ef5350;
   }
 
-  .content-button {
-    text-transform: none;
-    font-size: 14px;
-    padding: 8px 16px;
-    border-radius: 6px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+  :global(.content-button) {
+    font-weight: 600 !important;
   }
 
   .content-icon {
     display: inline-flex;
     align-items: center;
-    margin-right: 8px;
   }
 
   .content-icon .material-icons {

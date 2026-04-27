@@ -142,24 +142,28 @@
     width: 100%;
   }
 
-  .nav-item {
+  .nav-item, :global(.content-button) {
+    height: 100% !important;
     width: 100%;
     border: none;
     background: transparent;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px;
-    border-radius: 10px;
+    padding: 12px !important;
+    border-radius: 10px !important;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 14px !important;
     text-align: left;
     box-sizing: border-box;
+    text-transform: none !important;
+    letter-spacing: normal !important;
     transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
   }
 
   .nav-item:hover {
-    background: #ececec;
+    background: #ececec !important;
+    color: black !important;
   }
 
   .nav-item.active {
@@ -179,34 +183,43 @@
     background: transparent;
   }
 
-  .selected-topics {
-    background: #ec5f54;
-    color: white;
+  .nav-item.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
-  .selected-quiz {
-    background: #ef8c4a;
-    color: white;
+  .nav-item.disabled:hover {
+    background: transparent;
   }
 
-  .selected-flashcards {
-    background: #f9df6f;
-    color: #222;
+  :global(.selected-topics), .selected-topics {
+    background: #ec5f54 !important;
+    color: white !important;
   }
 
-  .selected-summary {
-    background: #5cb35a;
-    color: white;
+  :global(.selected-quiz), .selected-quiz {
+    background: #ef8c4a !important;
+    color: white !important;
   }
 
-  .selected-chat {
-    background: #63b1f5;
-    color: white;
+  :global(.selected-flashcards), .selected-flashcards {
+    background: #f9df6f !important;
+    color: #222 !important;
   }
 
-  .selected-timer {
-    background: #d198f7;
-    color: white;
+  :global(.selected-summary), .selected-summary {
+    background: #5cb35a !important;
+    color: white !important;
+  }
+
+  :global(.selected-chat), .selected-chat {
+    background: #63b1f5 !important;
+    color: white !important;
+  }
+
+  :global(.selected-timer), .selected-timer {
+    background: #d198f7 !important;
+    color: white !important;
   }
 
   .sidebar.collapsed .nav-item {
