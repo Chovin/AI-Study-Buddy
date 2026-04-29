@@ -18,6 +18,14 @@
   import { onMount } from 'svelte'
 
   import { renderMarkdown } from './utils/markdown.js'
+  import { 
+    exportFlashcardsToCSV, 
+    exportQuizToCSV, 
+    exportFlashcardsToTSV,
+    copyFlashcardsToClipboard,
+    copyQuizToClipboard,
+    openQuizletImport
+  } from './utils/quizletExport.js'
 
   import 'svelte-material-ui/themes/svelte.css'
   import 'material-icons/iconfont/material-icons.css'
@@ -491,6 +499,70 @@
       generatingDetailedSummary = false
     }
   }
+
+  // Export functions for Quizlet
+  const handleExportQuizCSV = () => {
+    try {
+      exportQuizToCSV(quiz, selectedTopic?.name || 'Quiz')
+    } catch (err) {
+      responseString = err.message
+      setTimeout(() => {
+        responseString = ''
+      }, 5000)
+    }
+  }
+
+  const handleExportFlashcardsCSV = () => {
+    try {
+      exportFlashcardsToCSV(flashcards, selectedTopic?.name || 'Flashcards')
+    } catch (err) {
+      responseString = err.message
+      setTimeout(() => {
+        responseString = ''
+      }, 5000)
+    }
+  }
+
+  const handleExportFlashcardsTSV = () => {
+    try {
+      exportFlashcardsToTSV(flashcards, selectedTopic?.name || 'Flashcards')
+    } catch (err) {
+      responseString = err.message
+      setTimeout(() => {
+        responseString = ''
+      }, 5000)
+    }
+  }
+
+  const handleCopyFlashcardsToClipboard = async () => {
+    try {
+      await copyFlashcardsToClipboard(flashcards)
+      responseString = 'Flashcards copied to clipboard! Ready to paste in Quizlet.'
+      setTimeout(() => {
+        responseString = ''
+      }, 5000)
+    } catch (err) {
+      responseString = err.message
+      setTimeout(() => {
+        responseString = ''
+      }, 5000)
+    }
+  }
+
+  const handleCopyQuizToClipboard = async () => {
+    try {
+      await copyQuizToClipboard(quiz)
+      responseString = 'Quiz copied to clipboard!'
+      setTimeout(() => {
+        responseString = ''
+      }, 5000)
+    } catch (err) {
+      responseString = err.message
+      setTimeout(() => {
+        responseString = ''
+      }, 5000)
+    }
+  }
 </script>
 
 <div class="app-shell">
@@ -670,6 +742,9 @@
             {selectedTopic}
             {selectedModel}
             onGenerateFlashcards={generateFlashcards}
+            onExportCSV={handleExportFlashcardsCSV}
+            onExportTSV={handleExportFlashcardsTSV}
+            onCopyToClipboard={handleCopyFlashcardsToClipboard}
           />
 
         {:else if active === 'quiz'}
@@ -696,6 +771,22 @@
                 style="height: 32px; width: 32px;"
                 closed={!generating}
               />
+
+              {#if quiz.length > 0}
+                <Button
+                  onclick={handleExportQuizCSV}
+                  title="Export quiz as CSV file for Quizlet"
+                >
+                  Export to CSV
+                </Button>
+
+                <Button
+                  onclick={handleCopyQuizToClipboard}
+                  title="Copy quiz to clipboard"
+                >
+                  Copy to Clipboard
+                </Button>
+              {/if}
             </div>
 
             {#if !selectedTopic}

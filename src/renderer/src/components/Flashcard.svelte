@@ -8,7 +8,10 @@
     generatingFlashcards = false,
     selectedTopic = null,
     selectedModel = '',
-    onGenerateFlashcards
+    onGenerateFlashcards,
+    onExportCSV = null,
+    onExportTSV = null,
+    onCopyToClipboard = null
   } = $props()
 
   function toggleFlashcard(index) {
@@ -39,6 +42,29 @@
       style="height: 32px; width: 32px;"
       closed={!generatingFlashcards}
     />
+
+    {#if flashcards.length > 0}
+      <Button
+        onclick={onExportCSV}
+        title="Export flashcards as CSV file for Quizlet"
+      >
+        Export to CSV
+      </Button>
+
+      <Button
+        onclick={onExportTSV}
+        title="Export flashcards as TSV file for Quizlet"
+      >
+        Export to TSV
+      </Button>
+
+      <Button
+        onclick={onCopyToClipboard}
+        title="Copy flashcards to clipboard for pasting in Quizlet"
+      >
+        Copy to Clipboard
+      </Button>
+    {/if}
   </div>
 
   {#if !selectedTopic}
