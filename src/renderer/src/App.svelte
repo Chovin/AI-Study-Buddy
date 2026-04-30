@@ -19,12 +19,8 @@
 
   import { renderMarkdown } from './utils/markdown.js'
   import { 
-    exportFlashcardsToCSV, 
-    exportQuizToCSV, 
-    exportFlashcardsToTSV,
     copyFlashcardsToClipboard,
-    copyQuizToClipboard,
-    openQuizletImport
+    copyQuizToClipboard
   } from './utils/quizletExport.js'
 
   import 'svelte-material-ui/themes/svelte.css'
@@ -501,39 +497,6 @@
   }
 
   // Export functions for Quizlet
-  const handleExportQuizCSV = () => {
-    try {
-      exportQuizToCSV(quiz, selectedTopic?.name || 'Quiz')
-    } catch (err) {
-      responseString = err.message
-      setTimeout(() => {
-        responseString = ''
-      }, 5000)
-    }
-  }
-
-  const handleExportFlashcardsCSV = () => {
-    try {
-      exportFlashcardsToCSV(flashcards, selectedTopic?.name || 'Flashcards')
-    } catch (err) {
-      responseString = err.message
-      setTimeout(() => {
-        responseString = ''
-      }, 5000)
-    }
-  }
-
-  const handleExportFlashcardsTSV = () => {
-    try {
-      exportFlashcardsToTSV(flashcards, selectedTopic?.name || 'Flashcards')
-    } catch (err) {
-      responseString = err.message
-      setTimeout(() => {
-        responseString = ''
-      }, 5000)
-    }
-  }
-
   const handleCopyFlashcardsToClipboard = async () => {
     try {
       await copyFlashcardsToClipboard(flashcards)
@@ -742,8 +705,6 @@
             {selectedTopic}
             {selectedModel}
             onGenerateFlashcards={generateFlashcards}
-            onExportCSV={handleExportFlashcardsCSV}
-            onExportTSV={handleExportFlashcardsTSV}
             onCopyToClipboard={handleCopyFlashcardsToClipboard}
           />
 
@@ -771,21 +732,18 @@
                 style="height: 32px; width: 32px;"
                 closed={!generating}
               />
-
+            </div>
+            <div class="button-stack">
               {#if quiz.length > 0}
-                <Button
-                  onclick={handleExportQuizCSV}
-                  title="Export quiz as CSV file for Quizlet"
-                >
-                  Export to CSV
-                </Button>
-
-                <Button
-                  onclick={handleCopyQuizToClipboard}
-                  title="Copy quiz to clipboard"
-                >
-                  Copy to Clipboard
-                </Button>
+                <div class="export-section">
+                  <p class="export-title">Export to Quizlet</p>
+                  <Button
+                    onclick={handleCopyQuizToClipboard}
+                    title="Copy quiz to clipboard"
+                  >
+                    Copy to Clipboard
+                  </Button>
+                </div>
               {/if}
             </div>
 
@@ -1190,4 +1148,21 @@
   .markdown-content p {
     margin: 8px 0;
   }
+  .button-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem; /* Adjust space between Generate button and Export section */
+    align-items: flex-start;
+  }
+  .export-title {
+    margin:  0 0 0.5rem 0; /* Extra space above to separate from the first section */
+    font-size: 1rem;           /* Matches the large "Quiz" heading size */
+    font-weight: 700;           /* Heavy bold to match the "Quiz" weight */
+    color: #000;               /* Pure black */
+    letter-spacing: -0.02em;   /* Optional: tightens text slightly to match heading styles */
+  }
+  .button-stack Button {
+    width: fit-content;
+  }
+
 </style>

@@ -9,8 +9,6 @@
     selectedTopic = null,
     selectedModel = '',
     onGenerateFlashcards,
-    onExportCSV = null,
-    onExportTSV = null,
     onCopyToClipboard = null
   } = $props()
 
@@ -42,30 +40,21 @@
       style="height: 32px; width: 32px;"
       closed={!generatingFlashcards}
     />
-
+  </div>
+  <div class="main-button-container">
     {#if flashcards.length > 0}
-      <Button
-        onclick={onExportCSV}
-        title="Export flashcards as CSV file for Quizlet"
-      >
-        Export to CSV
-      </Button>
-
-      <Button
-        onclick={onExportTSV}
-        title="Export flashcards as TSV file for Quizlet"
-      >
-        Export to TSV
-      </Button>
-
-      <Button
-        onclick={onCopyToClipboard}
-        title="Copy flashcards to clipboard for pasting in Quizlet"
-      >
-        Copy to Clipboard
-      </Button>
+      <div class="export-section">
+        <h2 class="export-title">Export to Quizlet</h2>
+        <Button
+          onclick={onCopyToClipboard}
+          title="Copy flashcards to clipboard for pasting in Quizlet"
+        >
+          Copy to Clipboard
+        </Button>
+      </div>
     {/if}
   </div>
+
 
   {#if !selectedTopic}
     <p class="helper-text">Please select a topic first.</p>
@@ -237,4 +226,23 @@
   .markdown-content em {
     font-style: italic;
   }
+  .button-container-class { 
+    display: flex;
+    flex-direction: column; /* This forces the vertical stack */
+    align-items: flex-start;
+    gap: 2rem;              /* Adjust this for the vertical gap between sections */
+  }
+  .export-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .export-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #000;
+  }
+
 </style>
