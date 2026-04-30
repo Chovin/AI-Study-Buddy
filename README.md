@@ -6,7 +6,8 @@
 2. Open the app
 3. Allow the app time to download Ollama and Open WebUI
 4. Allow the app time to download its first model
-5. Create topics, upload files, and generate study materials
+5. It is recommended to also download and use at least llama3.2:3b as smaller models generate lower quality content, although be aware that larger models require much more memory and may slow down or freeze your computer
+6. Create topics, upload files, and generate study materials
 
 ### FAQ
 
