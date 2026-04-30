@@ -168,11 +168,11 @@
   }
 
   $: if ($timerStore) {
-    window.api.saveTimerSettings(
-      $timerStore.timerValue,
-      $timerStore.pomodoroWork,
-      $timerStore.pomodoroBreak
-    ).catch((err) => console.error('Failed to save timer settings:', err));
+    window.api.saveTimerSettings({
+      timerValue: $timerStore.timerValue,
+      pomodoroWork: $timerStore.pomodoroWork,
+      pomodoroBreak: $timerStore.pomodoroBreak
+    }).catch((err) => console.error('Failed to save timer settings:', err));
   }
 </script>
 

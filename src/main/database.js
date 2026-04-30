@@ -151,18 +151,26 @@ class Database {
         timer_value INTEGER DEFAULT 1500,
         pomodoro_work INTEGER DEFAULT 1500,
         pomodoro_break INTEGER DEFAULT 300,
+        pos_y INTEGER DEFAULT 90,
         last_selected_model TEXT
       )
     `);
     // Initialize with default values if empty
     await this.runAsync(`
-      INSERT OR IGNORE INTO timer_settings (id, timer_value, pomodoro_work, pomodoro_break)
-      VALUES (1, 1500, 1500, 300)
+      INSERT OR IGNORE INTO timer_settings (id, timer_value, pomodoro_work, pomodoro_break, pos_y)
+      VALUES (1, 1500, 1500, 300, 90)
     `);
     // Add column if it doesn't exist (for backwards compatibility)
     try {
       await this.runAsync(`
         ALTER TABLE timer_settings ADD COLUMN last_selected_model TEXT
+      `);
+    } catch (err) {
+      // Column already exists, ignore error
+    }
+    try {
+      await this.runAsync(`
+        ALTER TABLE timer_settings ADD COLUMN pos_y INTEGER
       `);
     } catch (err) {
       // Column already exists, ignore error
@@ -415,23 +423,33 @@ class Database {
     return await this.allAsync(query, [topicId]);
   }
 
-  async saveTimerSettings(timerValue, pomodoroWork, pomodoroBreak) {
+  async saveTimerSettings(timerValue, pomodoroWork, pomodoroBreak, pos_y) {
+    const args = {
+      timer_value: timerValue,
+      pomodoro_work: pomodoroWork,
+      pomodoro_break: pomodoroBreak,
+      pos_y
+    }
+    const argList = Object.entries(args).filter(([k, v]) => v !== undefined)
+    
+    const arkKeys = argList.map(([k, v]) => `${k} = ?`).join(', ')
+      
     const query = `
       UPDATE timer_settings
-      SET timer_value = ?, pomodoro_work = ?, pomodoro_break = ?
+      SET ${arkKeys}
       WHERE id = 1
     `;
-    return await this.runAsync(query, [timerValue, pomodoroWork, pomodoroBreak]);
+    return await this.runAsync(query, argList.map(([k, v]) => v));
   }
 
   async loadTimerSettings() {
     const query = `
-      SELECT timer_value, pomodoro_work, pomodoro_break
+      SELECT timer_value, pomodoro_work, pomodoro_break, pos_y
       FROM timer_settings
       WHERE id = 1
     `;
     const results = await this.allAsync(query, []);
-    return results[0] || { timer_value: 1500, pomodoro_work: 1500, pomodoro_break: 300 };
+    return results[0] || { timer_value: 1500, pomodoro_work: 1500, pomodoro_break: 300, pos_y: 90 };
   }
 
   async saveLastSelectedModel(modelName) {

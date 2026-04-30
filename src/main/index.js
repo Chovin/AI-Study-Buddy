@@ -783,9 +783,9 @@ ipcMain.handle('generate-detailed-summary', async (_, { model, topicId, fileIds 
   }
 })
 
-ipcMain.handle('save-timer-settings', async (_, { timerValue, pomodoroWork, pomodoroBreak }) => {
+ipcMain.handle('save-timer-settings', async (_, { timerValue, pomodoroWork, pomodoroBreak, pos_y }) => {
   try {
-    await db.saveTimerSettings(timerValue, pomodoroWork, pomodoroBreak)
+    await db.saveTimerSettings(timerValue, pomodoroWork, pomodoroBreak, pos_y)
     return 'Timer settings saved successfully'
   } catch (err) {
     throw new Error(err.message)
