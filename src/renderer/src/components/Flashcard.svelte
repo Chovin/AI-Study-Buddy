@@ -8,9 +8,8 @@
     generatingFlashcards = false,
     selectedTopic = null,
     selectedModel = '',
+    difficulty = $bindable('medium'),
     onGenerateFlashcards,
-    onExportCSV = null,
-    onExportTSV = null,
     onCopyToClipboard = null
   } = $props()
 
@@ -29,43 +28,45 @@
     Using {selectedModel || 'None'}
   </div>
 
-  <div class="quiz-actions">
-    <Button
-      onclick={onGenerateFlashcards}
-      disabled={!selectedTopic || generatingFlashcards}
-    >
-      Generate Flashcards
-    </Button>
+  <div class="controls-section">
+    <div class="difficulty-selector">
+      <label for="flashcard-difficulty">Difficulty:</label>
+      <select id="flashcard-difficulty" bind:value={difficulty}>
+        <option value="easy">Easy</option>
+        <option value="medium">Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+    </div>
 
-    <CircularProgress
-      indeterminate
-      style="height: 32px; width: 32px;"
-      closed={!generatingFlashcards}
-    />
+    <div class="quiz-actions">
+      <Button
+        onclick={onGenerateFlashcards}
+        disabled={!selectedTopic || generatingFlashcards}
+      >
+        Generate Flashcards
+      </Button>
 
+      <CircularProgress
+        indeterminate
+        style="height: 32px; width: 32px;"
+        closed={!generatingFlashcards}
+      />
+    </div>
+  </div>
+  <div class="main-button-container">
     {#if flashcards.length > 0}
-      <Button
-        onclick={onExportCSV}
-        title="Export flashcards as CSV file for Quizlet"
-      >
-        Export to CSV
-      </Button>
-
-      <Button
-        onclick={onExportTSV}
-        title="Export flashcards as TSV file for Quizlet"
-      >
-        Export to TSV
-      </Button>
-
-      <Button
-        onclick={onCopyToClipboard}
-        title="Copy flashcards to clipboard for pasting in Quizlet"
-      >
-        Copy to Clipboard
-      </Button>
+      <div class="export-section">
+        <h2 class="export-title">Export to Quizlet</h2>
+        <Button
+          onclick={onCopyToClipboard}
+          title="Copy flashcards to clipboard for pasting in Quizlet"
+        >
+          Copy to Clipboard
+        </Button>
+      </div>
     {/if}
   </div>
+
 
   {#if !selectedTopic}
     <p class="helper-text">Please select a topic first.</p>
@@ -237,4 +238,66 @@
   .markdown-content em {
     font-style: italic;
   }
+  .button-container-class { 
+    display: flex;
+    flex-direction: column; /* This forces the vertical stack */
+    align-items: flex-start;
+    gap: 2rem;              /* Adjust this for the vertical gap between sections */
+  }
+  .export-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .export-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #000;
+    margin-top: -16px;
+  }
+
+  .controls-section {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+
+  .difficulty-selector {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: -16px;
+  }
+
+  .difficulty-selector label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+  }
+
+  .difficulty-selector select {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    background-color: #fff;
+    cursor: pointer;
+    color: #333;
+    transition: border-color 0.2s ease;
+  }
+
+  .difficulty-selector select:hover {
+    border-color: #999;
+  }
+
+  .difficulty-selector select:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+  }
+
 </style>
