@@ -1,6 +1,6 @@
 <script>
   import { timerStore } from '../../../main/timerStore.js';
-  import { Play, Pause, RotateCcw, ChevronUp, ChevronDown } from 'lucide-svelte';
+  import { Play, Pause, RotateCcw, ChevronUp, ChevronDown, ChevronRight } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import alarmSrc from '../assets/TimerClockAlarm.mp3';
 
@@ -139,11 +139,9 @@
   function setFunctionByModeSelected(totalSeconds) {
     const applyFuncs = {
       timer: timerStore.setTimerValue,
-      pomodoro: (v) => {
-        return $timerStore.isBreak ? () => 
-          timerStore.setPomodoroSettings($timerStore.pomodoroWork, v) :
-          timerStore.setPomodoroSettings(v, $timerStore.pomodoroBreak)
-      }
+      pomodoro: (v) => $timerStore.isBreak ?
+        timerStore.setPomodoroSettings($timerStore.pomodoroWork, v) :
+        timerStore.setPomodoroSettings(v, $timerStore.pomodoroBreak)
     }
     applyFuncs[$timerStore.mode](totalSeconds)
   }
@@ -302,6 +300,14 @@
         <ChevronDown size={26} />
       </button>
     </div>
+
+    {#if $timerStore.mode === 'pomodoro'}
+      <div class="out-of-flex">
+        <button class="arrow-btn" onclick={() => timerStore.setPomodoroSettings($timerStore.pomodoroWork, $timerStore.pomodoroBreak, !$timerStore.isBreak)} disabled={!editableTimeMode || $timerStore.isRunning}>
+          <ChevronRight size={26} />
+        </button>
+      </div>
+    {/if}
   </div>
 
   <div class="timer-actions">
@@ -320,6 +326,11 @@
 </div>
 
 <style>
+
+  :root {
+    --time-editor-gap: 10px;
+    --arrow-btn-size: 42px;
+  }
   .timer-shell {
     width: 100%;
     display: flex;
@@ -363,8 +374,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: var(--time-editor-gap);
     flex-wrap: nowrap;
+    position: relative;
   }
 
   .time-group {
@@ -403,8 +415,8 @@
   }
 
   .arrow-btn {
-    width: 42px;
-    height: 42px;
+    width: var(--arrow-btn-size);
+    height: var(--arrow-btn-size);
     padding: 0;
     margin: 0;
     border: none;
@@ -422,6 +434,13 @@
   .arrow-btn:disabled {
     opacity: 0.35;
     cursor: not-allowed;
+  }
+
+  .out-of-flex {
+    position: absolute;
+    top: 50;
+    width: var(--arrow-btn-size);
+    right: calc(-1 * (var(--arrow-btn-size) + var(--time-editor-gap)));
   }
 
   .timer-actions {

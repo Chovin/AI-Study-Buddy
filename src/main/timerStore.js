@@ -220,12 +220,13 @@ function createTimerStore() {
     }));
   }
 
-  function setPomodoroSettings(workDuration, breakDuration) {
+  function setPomodoroSettings(workDuration, breakDuration, isBreak) {
     update((state) => ({
       ...state,
       pomodoroWork: Math.max(0, Number(workDuration) || POMODORO_WORK),
       pomodoroBreak: Math.max(0, Number(breakDuration) || POMODORO_BREAK),
-      pomodoroTimeLeft: Math.max(0, Number(state.isBreak ? breakDuration : workDuration) || POMODORO_WORK)
+      pomodoroTimeLeft: Math.max(0, Number((isBreak ?? state.isBreak) ? breakDuration : workDuration) || POMODORO_WORK),
+      isBreak: isBreak === undefined ? state.isBreak : isBreak
     }));
   }
 
