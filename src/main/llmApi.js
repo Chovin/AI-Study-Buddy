@@ -506,6 +506,9 @@ class LLMInterface {
     this._models[model].installed = true
     this._models[model].downloading = false
     progressManager.finishTask(OLMPID, 'Model ' + model + ' is ready!')
+    if (this.running) {
+      await this.updateWebUIModelList()
+    }
     return didDownload
   }
 
@@ -693,6 +696,17 @@ class LLMInterface {
 
   async promptLogin() {
     await runCommand("ollama", ["signin"])
+  }
+
+  async updateWebUIModelList() {
+    // re-scan models with ollama. for some reason, just calling this endpoint refreshes webui's model list
+    const url = `${WEBUI_BASE_URL}/models`
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${this.webUIAPIKey}`
+      }
+    })
+    
   }
 
   async chatWithFileContext({files = [], systemMessage = null, promptMessage = null, model = null, topicId = null, saveToHistory = true}) {
