@@ -45,7 +45,7 @@ function createTimerStore() {
   function getDisplaySeconds(state) {
     if (state.mode === 'stopwatch') return state.stopwatchSeconds;
     if (state.mode === 'pomodoro') return state.pomodoroTimeLeft;
-    return state.timerValue;
+    return state.timerTimeLeft;
   }
 
   function tick(state) {
@@ -59,10 +59,10 @@ function createTimerStore() {
     }
 
     if (state.mode === 'timer') {
-      if (state.timerValue > 0) {
+      if (state.timerTimeLeft > 0) {
         return {
           ...state,
-          timerValue: state.timerValue - 1
+          timerTimeLeft: state.timerTimeLeft - 1
         };
       }
 
@@ -162,7 +162,7 @@ function createTimerStore() {
         return {
           ...state,
           isRunning: false,
-          timerValue: TIMER_DEFAULT
+          timerTimeLeft: state.timerValue || TIMER_DEFAULT
         };
       }
 
@@ -170,7 +170,7 @@ function createTimerStore() {
         ...state,
         isRunning: false,
         isBreak: false,
-        pomodoroTimeLeft: POMODORO_WORK,
+        pomodoroTimeLeft: state.pomodoroWork || POMODORO_WORK,
         completedPomodoros: 0
       };
     });
@@ -196,7 +196,7 @@ function createTimerStore() {
           mode: 'timer',
           isRunning: false,
           isBreak: false,
-          timerValue: state.timerValue
+          timerTimeLeft: state.timerValue
         };
       }
 
@@ -212,9 +212,11 @@ function createTimerStore() {
   }
 
   function setTimerValue(seconds) {
+    const val = Math.max(0, Number(seconds) || 0)
     update((state) => ({
       ...state,
-      timerValue: Math.max(0, Number(seconds) || 0)
+      timerValue: val,
+      timerTimeLeft: val
     }));
   }
 
@@ -223,7 +225,7 @@ function createTimerStore() {
       ...state,
       pomodoroWork: Math.max(0, Number(workDuration) || POMODORO_WORK),
       pomodoroBreak: Math.max(0, Number(breakDuration) || POMODORO_BREAK),
-      pomodoroTimeLeft: Math.max(0, Number(workDuration) || POMODORO_WORK)
+      pomodoroTimeLeft: Math.max(0, Number(state.isBreak ? breakDuration : workDuration) || POMODORO_WORK)
     }));
   }
 

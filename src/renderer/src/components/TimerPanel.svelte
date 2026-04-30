@@ -51,11 +51,26 @@
     return value;
   }
 
+  function getTimeFromSelectedTimer() {
+    const tStore = $timerStore ?? {}
+    let value = tStore.timerValue
+    if (tStore.mode == 'pomodoro') {
+      value = tStore.isBreak ? tStore.pomodoroBreak : tStore.pomodoroWork
+    }
+    return value ?? 0
+  }
+
+  function getTimePartsFromSelectedTimer() {
+    let value = getTimeFromSelectedTimer()
+    return {
+      hours: Math.floor(value / 3600),
+      minutes: Math.floor((value % 3600) / 60),
+      seconds: value % 60
+    }
+  }
+
   function syncInputsFromTimer() {
-    const total = $timerStore?.timerValue ?? 0;
-    const hours = Math.floor(total / 3600);
-    const minutes = Math.floor((total % 3600) / 60);
-    const seconds = total % 60;
+    const {hours, minutes, seconds} = getTimePartsFromSelectedTimer()
 
     editHours = String(hours).padStart(2, '0');
     editMinutes = String(minutes).padStart(2, '0');
@@ -71,6 +86,32 @@
     syncInputsFromTimer();
   }
 
+  function applyInputsToPomodoroWork() {
+    applyInputsToPomodoro(false)
+  }
+
+  function applyInputsToPomodoroBreak() {
+    applyInputsToPomodoro(true)
+  }
+
+  function applyInputsToPomodoro(editingBreak = false) {
+    const hours = Math.max(0, Math.min(99, Number(editHours) || 0));
+    const minutes = Math.max(0, Math.min(59, Number(editMinutes) || 0));
+    const seconds = Math.max(0, Math.min(59, Number(editSeconds) || 0));
+
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds
+
+    const args = [$timerStore.pomodoroWork, $timerStore.pomodoroBreak]
+    if (editingBreak) {
+      args[1] = totalSeconds
+    } else {
+      args[0] = totalSeconds
+    }
+
+    timerStore.setPomodoroSettings(...args);
+    syncInputsFromTimer()
+  }
+
   function handleTypedInput(part, event) {
     const value = event.currentTarget.value.replace(/\D/g, '').slice(0, 2);
 
@@ -80,8 +121,12 @@
   }
 
   function commitTypedInput() {
-    if ($timerStore.mode !== 'timer' || $timerStore.isRunning) return;
-    applyInputsToTimer();
+    if (!editableTimeMode || $timerStore.isRunning) return;
+    const applyFuncs = {
+      timer: applyInputsToTimer,
+      pomodoro: $timerStore.isBreak ? applyInputsToPomodoroBreak : applyInputsToPomodoroWork
+    }
+    applyFuncs[$timerStore.mode]()
   }
 
   function handleInputKeydown(event) {
@@ -91,42 +136,26 @@
     }
   }
 
-  function adjustHours(amount) {
-    if ($timerStore.mode !== 'timer' || $timerStore.isRunning) return;
-
-    const total = $timerStore.timerValue ?? 0;
-    let hours = Math.floor(total / 3600);
-    const minutes = Math.floor((total % 3600) / 60);
-    const seconds = total % 60;
-
-    hours = wrap(hours + amount, 0, 99);
-    timerStore.setTimerValue(hours * 3600 + minutes * 60 + seconds);
-    syncInputsFromTimer();
+  function setFunctionByModeSelected(totalSeconds) {
+    const applyFuncs = {
+      timer: timerStore.setTimerValue,
+      pomodoro: (v) => {
+        return $timerStore.isBreak ? () => 
+          timerStore.setPomodoroSettings($timerStore.pomodoroWork, v) :
+          timerStore.setPomodoroSettings(v, $timerStore.pomodoroBreak)
+      }
+    }
+    applyFuncs[$timerStore.mode](totalSeconds)
   }
 
-  function adjustMinutes(amount) {
-    if ($timerStore.mode !== 'timer' || $timerStore.isRunning) return;
+  function adjustTime(dhours, dminutes, dseconds) {
+    if (!editableTimeMode || $timerStore.isRunning) return;
+    let {hours, minutes, seconds} = getTimePartsFromSelectedTimer()
 
-    const total = $timerStore.timerValue ?? 0;
-    const hours = Math.floor(total / 3600);
-    let minutes = Math.floor((total % 3600) / 60);
-    const seconds = total % 60;
-
-    minutes = wrap(minutes + amount, 0, 59);
-    timerStore.setTimerValue(hours * 3600 + minutes * 60 + seconds);
-    syncInputsFromTimer();
-  }
-
-  function adjustSeconds(amount) {
-    if ($timerStore.mode !== 'timer' || $timerStore.isRunning) return;
-
-    const total = $timerStore.timerValue ?? 0;
-    const hours = Math.floor(total / 3600);
-    const minutes = Math.floor((total % 3600) / 60);
-    let seconds = total % 60;
-
-    seconds = wrap(seconds + amount, 0, 59);
-    timerStore.setTimerValue(hours * 3600 + minutes * 60 + seconds);
+    hours = wrap(hours + dhours, 0, 99);
+    minutes = wrap(minutes + dminutes, 0, 59);
+    seconds = wrap(seconds + dseconds, 0, 59);
+    setFunctionByModeSelected(hours * 3600 + minutes * 60 + seconds);
     syncInputsFromTimer();
   }
 
@@ -141,8 +170,9 @@
   $: displayTime = timerStore.formatTime(displaySeconds);
   $: timeParts = displayTime.split(':');
   $: timerTitle = timerStore.getFloatingTitle($timerStore);
+  $: editableTimeMode = ['timer', 'pomodoro'].includes($timerStore.mode);
 
-  $: if ($timerStore.mode === 'timer' && !$timerStore.isRunning) {
+  $: if (editableTimeMode && !$timerStore.isRunning) {
     syncInputsFromTimer();
   }
 
@@ -195,11 +225,11 @@
 
   <div class="time-editor">
     <div class="time-group">
-      <button class="arrow-btn" onclick={() => adjustHours(1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
+      <button class="arrow-btn" onclick={() => adjustTime(1, 0, 0)} disabled={!editableTimeMode || $timerStore.isRunning}>
         <ChevronUp size={26} />
       </button>
 
-      {#if $timerStore.mode === 'timer' && !$timerStore.isRunning}
+      {#if editableTimeMode && !$timerStore.isRunning}
         <input
           class="time-input"
           type="text"
@@ -214,7 +244,7 @@
         <div class="time-display">{timeParts[0]}</div>
       {/if}
 
-      <button class="arrow-btn" onclick={() => adjustHours(-1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
+      <button class="arrow-btn" onclick={() => adjustTime(-1, 0, 0)} disabled={!editableTimeMode || $timerStore.isRunning}>
         <ChevronDown size={26} />
       </button>
     </div>
@@ -222,11 +252,11 @@
     <div class="colon">:</div>
 
     <div class="time-group">
-      <button class="arrow-btn" onclick={() => adjustMinutes(1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
+      <button class="arrow-btn" onclick={() => adjustTime(0, 1, 0)} disabled={!editableTimeMode || $timerStore.isRunning}>
         <ChevronUp size={26} />
       </button>
 
-      {#if $timerStore.mode === 'timer' && !$timerStore.isRunning}
+      {#if editableTimeMode && !$timerStore.isRunning}
         <input
           class="time-input"
           type="text"
@@ -241,7 +271,7 @@
         <div class="time-display">{timeParts[1]}</div>
       {/if}
 
-      <button class="arrow-btn" onclick={() => adjustMinutes(-1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
+      <button class="arrow-btn" onclick={() => adjustTime(0, -1, 0)} disabled={!editableTimeMode || $timerStore.isRunning}>
         <ChevronDown size={26} />
       </button>
     </div>
@@ -249,11 +279,11 @@
     <div class="colon">:</div>
 
     <div class="time-group">
-      <button class="arrow-btn" onclick={() => adjustSeconds(1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
+      <button class="arrow-btn" onclick={() => adjustTime(0, 0, 1)} disabled={!editableTimeMode || $timerStore.isRunning}>
         <ChevronUp size={26} />
       </button>
 
-      {#if $timerStore.mode === 'timer' && !$timerStore.isRunning}
+      {#if editableTimeMode && !$timerStore.isRunning}
         <input
           class="time-input"
           type="text"
@@ -268,7 +298,7 @@
         <div class="time-display">{timeParts[2]}</div>
       {/if}
 
-      <button class="arrow-btn" onclick={() => adjustSeconds(-1)} disabled={$timerStore.mode !== 'timer' || $timerStore.isRunning}>
+      <button class="arrow-btn" onclick={() => adjustTime(0, 0, -1)} disabled={!editableTimeMode || $timerStore.isRunning}>
         <ChevronDown size={26} />
       </button>
     </div>
