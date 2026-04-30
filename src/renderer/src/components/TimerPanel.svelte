@@ -239,7 +239,7 @@
           onkeydown={handleInputKeydown}
         />
       {:else}
-        <div class="time-display">{timeParts[0]}</div>
+        <input inert class="time-display" value={timeParts[0]}/>
       {/if}
 
       <button class="arrow-btn" onclick={() => adjustTime(-1, 0, 0)} disabled={!editableTimeMode || $timerStore.isRunning}>
@@ -266,7 +266,7 @@
           onkeydown={handleInputKeydown}
         />
       {:else}
-        <div class="time-display">{timeParts[1]}</div>
+        <input inert class="time-display" value={timeParts[1]}/>
       {/if}
 
       <button class="arrow-btn" onclick={() => adjustTime(0, -1, 0)} disabled={!editableTimeMode || $timerStore.isRunning}>
@@ -293,7 +293,7 @@
           onkeydown={handleInputKeydown}
         />
       {:else}
-        <div class="time-display">{timeParts[2]}</div>
+        <input inert class="time-display" value={timeParts[2]}/>
       {/if}
 
       <button class="arrow-btn" onclick={() => adjustTime(0, 0, -1)} disabled={!editableTimeMode || $timerStore.isRunning}>
