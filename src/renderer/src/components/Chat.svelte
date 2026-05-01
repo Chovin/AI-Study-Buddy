@@ -389,6 +389,23 @@
     justify-content: flex-end;
   }
 
+  /* llms sometimes don't put lists in ol/ul which
+    means they don't get indented, so we'll indent
+    them here and revert the style for li with ol/ul
+  */
+  .assistant-message .message-content :global(li),
+  .user-message .message-content :global(li) {
+    padding-inline-start: 40px;
+    list-style-position: inside;
+  }
+
+  .assistant-message .message-content :global(ol li),
+  .assistant-message .message-content :global(ul li),
+  .user-message .message-content :global(ol li),
+  .user-message .message-content :global(ul li) {
+    padding-inline-start: revert;
+  }
+
   .user-message .message-content {
     background: #667eea;
     color: white;
