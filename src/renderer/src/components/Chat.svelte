@@ -414,6 +414,11 @@
     list-style-position: revert;
   }
 
+  .assistant-message .message-content :global(pre),
+  .user-message .message-content :global(pre) {
+    overflow: scroll;
+  }
+
   .user-message .message-content {
     background: #667eea;
     color: white;
