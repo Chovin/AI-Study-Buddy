@@ -389,6 +389,13 @@
     justify-content: flex-end;
   }
 
+  .user-message .message-content,
+  .assistant-message .message-content {
+    padding: 0px 16px;
+    max-width: 70%;
+    word-wrap: break-word;
+  }
+
   /* llms sometimes don't put lists in ol/ul which
     means they don't get indented, so we'll indent
     them here and revert the style for li with ol/ul
@@ -410,9 +417,6 @@
     background: #667eea;
     color: white;
     border-radius: 12px 12px 0 12px;
-    padding: 12px 16px;
-    max-width: 70%;
-    word-wrap: break-word;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
@@ -424,9 +428,6 @@
     background: white;
     color: #333;
     border-radius: 12px 12px 12px 0;
-    padding: 12px 16px;
-    max-width: 70%;
-    word-wrap: break-word;
     border: 1px solid #e0e0e0;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
