@@ -402,7 +402,7 @@
   */
   .assistant-message .message-content :global(li),
   .user-message .message-content :global(li) {
-    padding-inline-start: 40px;
+    padding-inline-start: 25px;
     list-style-position: inside;
   }
 
@@ -411,6 +411,7 @@
   .user-message .message-content :global(ol li),
   .user-message .message-content :global(ul li) {
     padding-inline-start: revert;
+    list-style-position: revert;
   }
 
   .user-message .message-content {
