@@ -13,8 +13,35 @@
     onCopyToClipboard = null
   } = $props()
 
-  function toggleFlashcard(index) {
-    flashcards[index].flipped = !flashcards[index].flipped
+  let currentIndex = $state(0)
+  let isFlipping = $state(false)
+
+  function currentFlashcard() {
+    return flashcards[currentIndex]
+  }
+
+  function toggleCurrentFlashcard() {
+    if (!currentFlashcard() || isFlipping) return
+
+    isFlipping = true
+
+    setTimeout(() => {
+      flashcards[currentIndex].flipped = !flashcards[currentIndex].flipped
+    }, 160)
+
+    setTimeout(() => {
+      isFlipping = false
+    }, 320)
+  }
+
+  function nextFlashcard() {
+    if (!flashcards.length) return
+    currentIndex = (currentIndex + 1) % flashcards.length
+  }
+
+  function previousFlashcard() {
+    if (!flashcards.length) return
+    currentIndex = (currentIndex - 1 + flashcards.length) % flashcards.length
   }
 </script>
 
@@ -31,6 +58,7 @@
   <div class="controls-section">
     <div class="difficulty-selector">
       <label for="flashcard-difficulty">Difficulty:</label>
+
       <select id="flashcard-difficulty" bind:value={difficulty}>
         <option value="easy">Easy</option>
         <option value="medium">Medium</option>
@@ -40,6 +68,7 @@
 
     <div class="quiz-actions">
       <Button
+        class="generate-btn"
         onclick={onGenerateFlashcards}
         disabled={!selectedTopic || generatingFlashcards}
       >
@@ -53,48 +82,52 @@
       />
     </div>
   </div>
-  <div class="main-button-container">
-    {#if flashcards.length > 0}
-      <div class="export-section">
-        <h2 class="export-title">Export to Quizlet</h2>
-        <Button
-          onclick={onCopyToClipboard}
-          title="Copy flashcards to clipboard for pasting in Quizlet"
-        >
-          Copy to Clipboard
-        </Button>
-      </div>
-    {/if}
-  </div>
-
 
   {#if !selectedTopic}
     <p class="helper-text">Please select a topic first.</p>
   {/if}
 
-  <div class="flashcards-grid">
-    {#each flashcards as f, fi (fi)}
+  {#if flashcards.length}
+    <div class="export-section">
+      <h2 class="export-title">Export to Quizlet</h2>
+
+      <button class="copy-btn" onclick={onCopyToClipboard}>
+        Copy to Clipboard
+      </button>
+    </div>
+
+    <div class="flashcard-carousel">
+      <div class="carousel-counter">
+        {currentIndex + 1} / {flashcards.length}
+      </div>
+
       <div
         class="flashcard"
-        onclick={() => toggleFlashcard(fi)}
+        class:flipping={isFlipping}
+        onclick={toggleCurrentFlashcard}
       >
-        {#if f.flipped}
-          <div class="flashcard-content markdown-content">
-            {@html renderMarkdown(f.back)}
-          </div>
-        {:else}
-          <div class="flashcard-content markdown-content">
-            {@html renderMarkdown(f.front)}
-          </div>
-        {/if}
+        <div class="flashcard-content markdown-content">
+          {@html renderMarkdown(
+            currentFlashcard()?.flipped
+              ? currentFlashcard().back
+              : currentFlashcard().front
+          )}
+        </div>
       </div>
-    {/each}
-  </div>
+
+      <div class="carousel-actions">
+        <button class="nav-btn" onclick={previousFlashcard}>Previous</button>
+        <button class="nav-btn" onclick={toggleCurrentFlashcard}>Flip</button>
+        <button class="nav-btn" onclick={nextFlashcard}>Next</button>
+      </div>
+    </div>
+  {/if}
 </section>
 
 <style>
   .panel {
-    max-width: 1000px;
+    width: 100%;
+    max-width: none;
   }
 
   .section-header {
@@ -108,21 +141,66 @@
 
   .section-header p {
     margin: 0;
-    color: #666;
+    color: #000;
     font-size: 14px;
   }
 
   .using-text {
     font-size: 12px;
     color: #666;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
+  }
+
+  .controls-section {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  .difficulty-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .difficulty-selector label {
+    font-size: 14px;
+    color: #333;
+  }
+
+  .difficulty-selector select {
+    padding: 8px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
   }
 
   .quiz-actions {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 16px;
+  }
+
+  .generate-btn :global(button) {
+    border-radius: 999px;
+    border: 2px solid #ff4d2d;
+    color: #ff4d2d;
+    background: transparent;
+    padding: 8px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  .generate-btn :global(button:hover) {
+    background: #ff4d2d;
+    color: #fff;
   }
 
   .helper-text {
@@ -131,173 +209,110 @@
     margin-top: 12px;
   }
 
-  .flashcards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  .export-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .export-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #000;
+  }
+
+  .copy-btn,
+  .nav-btn {
+    padding: 8px 22px;
+    border: 2px solid #000;
+    border-radius: 999px;
+    background: #fff;
+    color: #000;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .copy-btn:hover,
+  .nav-btn:hover {
+    background: #000;
+    color: #fff;
+  }
+
+  .flashcard-carousel {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: 16px;
     margin-top: 20px;
+    overflow: hidden;
+  }
+
+  .carousel-counter {
+    font-size: 14px;
+    color: #000;
   }
 
   .flashcard {
-    min-height: 160px;
-    padding: 20px;
-    border: 1px solid #ddd;
-    border-radius: 16px;
+    width: min(100%, 900px);
+    height: clamp(280px, 50vh, 520px);
+    padding: clamp(16px, 3vw, 32px);
+    border: 2px solid #000;
+    border-radius: 20px;
     background: #fff;
-    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    text-align: center;
     box-sizing: border-box;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+    overflow: hidden;
+    transform-origin: center;
   }
 
-  .flashcard:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  .flashcard.flipping {
+    animation: flip 0.32s ease;
+  }
+
+  @keyframes flip {
+    0% {
+      transform: scaleX(1);
+    }
+
+    50% {
+      transform: scaleX(0.05);
+    }
+
+    100% {
+      transform: scaleX(1);
+    }
   }
 
   .flashcard-content {
+    width: 100%;
+    max-height: 100%;
+    text-align: center;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .carousel-actions {
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-    padding: 12px;
-    box-sizing: border-box;
-    word-wrap: break-word;
-    overflow: hidden;
-    text-align: center;
+    gap: 12px;
   }
 
   .markdown-content {
-    font-size: 14px;
+    font-size: clamp(14px, 1.6vw, 22px);
     line-height: 1.6;
     color: #333;
-  }
-
-  .markdown-content h1 {
-    font-size: 24px;
-    margin: 16px 0 12px 0;
-    font-weight: 600;
-  }
-
-  .markdown-content h2 {
-    font-size: 20px;
-    margin: 14px 0 10px 0;
-    font-weight: 600;
-  }
-
-  .markdown-content h3 {
-    font-size: 18px;
-    margin: 12px 0 8px 0;
-    font-weight: 600;
   }
 
   .markdown-content p {
     margin: 8px 0;
   }
-
-  .markdown-content code {
-    background: #f4f4f4;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: 'Courier New', monospace;
-    font-size: 13px;
-  }
-
-  .markdown-content pre {
-    background: #f4f4f4;
-    padding: 12px;
-    border-radius: 8px;
-    overflow-x: auto;
-    margin: 8px 0;
-  }
-
-  .markdown-content pre code {
-    background: none;
-    padding: 0;
-    font-size: 12px;
-  }
-
-  .markdown-content ol,
-  .markdown-content ul {
-    margin: 8px 0;
-    padding-left: 24px;
-  }
-
-  .markdown-content li {
-    margin: 4px 0;
-  }
-
-  .markdown-content strong {
-    font-weight: 600;
-  }
-
-  .markdown-content em {
-    font-style: italic;
-  }
-  .button-container-class { 
-    display: flex;
-    flex-direction: column; /* This forces the vertical stack */
-    align-items: flex-start;
-    gap: 2rem;              /* Adjust this for the vertical gap between sections */
-  }
-  .export-section {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .export-title {
-    margin: 0 0 0.5rem 0;
-    font-size: 1rem;
-    font-weight: 700;
-    color: #000;
-    margin-top: -16px;
-  }
-
-  .controls-section {
-    display: flex;
-    flex-direction: row;
-    gap: 12px;
-    margin-bottom: 16px;
-    align-items: center;
-  }
-
-  .difficulty-selector {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: -16px;
-  }
-
-  .difficulty-selector label {
-    font-size: 14px;
-    font-weight: 500;
-    color: #333;
-  }
-
-  .difficulty-selector select {
-    padding: 6px 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 14px;
-    background-color: #fff;
-    cursor: pointer;
-    color: #333;
-    transition: border-color 0.2s ease;
-  }
-
-  .difficulty-selector select:hover {
-    border-color: #999;
-  }
-
-  .difficulty-selector select:focus {
-    outline: none;
-    border-color: #1976d2;
-    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
-  }
-
 </style>

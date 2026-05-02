@@ -196,9 +196,17 @@
     background: #ec5f54 !important;
     color: white !important;
   }
+  :global(.nav-item.selected-topics:hover){
+    background: #ef7e76 !important;
+    color: white !important;
+  }
 
   :global(.selected-quiz), .selected-quiz {
     background: #ef8c4a !important;
+    color: white !important;
+  }
+  :global(.nav-item.selected-quiz:hover){
+    background: #f2a36e !important;
     color: white !important;
   }
 
@@ -207,8 +215,16 @@
     color: #222 !important;
   }
 
+  :global(.nav-item.selected-flashcards:hover){
+    background: #fae58b !important;
+  }
+
   :global(.selected-summary), .selected-summary {
     background: #5cb35a !important;
+    color: white !important;
+  }
+  :global(.nav-item.selected-summary:hover){
+    background: #7cc27a !important;
     color: white !important;
   }
 
@@ -216,9 +232,17 @@
     background: #63b1f5 !important;
     color: white !important;
   }
+  :global(.nav-item.selected-chat:hover){
+    background: #82c0f7 !important;
+    color: white !important;
+  }
 
   :global(.selected-timer), .selected-timer {
     background: #d198f7 !important;
+    color: white !important;
+  }
+  :global(.nav-item.selected-timer:hover){
+    background: #daacf8 !important;
     color: white !important;
   }
 
