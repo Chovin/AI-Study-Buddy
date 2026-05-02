@@ -155,11 +155,6 @@ class Database {
         last_selected_model TEXT
       )
     `);
-    // Initialize with default values if empty
-    await this.runAsync(`
-      INSERT OR IGNORE INTO timer_settings (id, timer_value, pomodoro_work, pomodoro_break, pos_y)
-      VALUES (1, 1500, 1500, 300, 90)
-    `);
     // Add column if it doesn't exist (for backwards compatibility)
     try {
       await this.runAsync(`
@@ -175,6 +170,11 @@ class Database {
     } catch (err) {
       // Column already exists, ignore error
     }
+    // Initialize with default values if empty
+    await this.runAsync(`
+      INSERT OR IGNORE INTO timer_settings (id, timer_value, pomodoro_work, pomodoro_break, pos_y)
+      VALUES (1, 1500, 1500, 300, 90)
+    `);
   }
 
   // Helper to promisify database operations
