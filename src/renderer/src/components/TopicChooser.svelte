@@ -1,32 +1,41 @@
 <script>
-  import { onMount } from 'svelte'
+  import { onMount, tick } from 'svelte'
   import Select, { Option } from '@smui/select'
 
   export let selectedTopic = null
 
   let topics = []
   let selectedValue = ''
+  let refreshKey = 0
 
-  export async function loadTopics() {
+  async function fetchTopics() {
     topics = await window.api.getTopics()
+  }
 
+  function syncSelectedTopic() {
     if (selectedTopic) {
       const match = topics.find(t => String(t.id) === String(selectedTopic.id))
-      if (match) {
-        selectedTopic = match
-      } else {
-        selectedTopic = null
-      }
+      selectedTopic = match || null
     }
 
     selectedValue = selectedTopic ? String(selectedTopic.id) : ''
   }
 
-  onMount(async () => {
-    await loadTopics()
-  })
+  export async function refreshTopics() {
+    await fetchTopics()
+    syncSelectedTopic()
 
-  $: selectedValue = selectedTopic ? String(selectedTopic.id) : ''
+    refreshKey += 1
+    await tick()
+  }
+
+  export async function loadTopics() {
+    await refreshTopics()
+  }
+
+  onMount(async () => {
+    await refreshTopics()
+  })
 
   function handleChange() {
     const chosen = topics.find(t => String(t.id) === String(selectedValue))
@@ -38,18 +47,21 @@
   <div class="selector-label">Select Topic</div>
 
   <div class="selector-box">
-    <Select
-      bind:value={selectedValue}
-      label=""
-      variant="outlined"
-      onSMUISelectChange={handleChange}
-    >
-      <Option value="">None</Option>
-      {#each topics as topic}
-        <Option value={String(topic.id)}>
-          {topic.name}
-        </Option>
-      {/each}
-    </Select>
+    {#key refreshKey}
+      <Select
+        bind:value={selectedValue}
+        label=""
+        variant="outlined"
+        onSMUISelectChange={handleChange}
+      >
+        <Option value="">None</Option>
+
+        {#each topics as topic (topic.id)}
+          <Option value={String(topic.id)}>
+            {topic.name}
+          </Option>
+        {/each}
+      </Select>
+    {/key}
   </div>
 </div>

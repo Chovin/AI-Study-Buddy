@@ -322,7 +322,13 @@
   }
 
   async function refreshTopics() {
-    await topicChooserRef?.loadTopics()
+    await topicChooserRef?.refreshTopics()
+
+    if (selectedTopic) {
+      const topics = await window.api.getTopics()
+      const updatedTopic = topics.find(topic => topic.id === selectedTopic.id)
+      selectedTopic = updatedTopic || null
+    }
   }
 
   const sendChat = async () => {
