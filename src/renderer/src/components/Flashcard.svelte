@@ -9,6 +9,7 @@
     selectedTopic = null,
     selectedModel = '',
     difficulty = $bindable('medium'),
+    copied = false,
     onGenerateFlashcards,
     onCopyToClipboard = null
   } = $props()
@@ -92,7 +93,7 @@
       <h2 class="export-title">Export to Quizlet</h2>
 
       <button class="copy-btn" onclick={onCopyToClipboard}>
-        Copy to Clipboard
+        {copied ? 'Copied!' : 'Copy to Clipboard'}
       </button>
     </div>
 
@@ -141,7 +142,7 @@
 
   .section-header p {
     margin: 0;
-    color: #000;
+    color: #666;
     font-size: 14px;
   }
 
@@ -219,7 +220,7 @@
 
   .export-title {
     margin: 0;
-    font-size: 14px;
+    font-size: 1rem;
     font-weight: 700;
     color: #000;
   }

@@ -49,6 +49,8 @@
   let flashcards = $state([])
   let generatingFlashcards = $state(false)
   let flashcardDifficulty = $state('medium')
+  let copiedFlashcards = $state(false)
+  let copiedQuiz = $state(false)
 
   let quickSummary = $state('')
   let detailedSummary = $state('')
@@ -508,8 +510,10 @@
   const handleCopyFlashcardsToClipboard = async () => {
     try {
       await copyFlashcardsToClipboard(flashcards)
+      copiedFlashcards = true
       responseString = 'Flashcards copied to clipboard! Ready to paste in Quizlet.'
       setTimeout(() => {
+        copiedFlashcards = false
         responseString = ''
       }, 5000)
     } catch (err) {
@@ -523,8 +527,10 @@
   const handleCopyQuizToClipboard = async () => {
     try {
       await copyQuizToClipboard(quiz)
+      copiedQuiz = true
       responseString = 'Quiz copied to clipboard!'
       setTimeout(() => {
+        copiedQuiz = false
         responseString = ''
       }, 5000)
     } catch (err) {
@@ -713,6 +719,7 @@
             {selectedTopic}
             {selectedModel}
             bind:difficulty={flashcardDifficulty}
+            copied={copiedFlashcards}
             onGenerateFlashcards={generateFlashcards}
             onCopyToClipboard={handleCopyFlashcardsToClipboard}
           />
@@ -757,12 +764,9 @@
               {#if quiz.length > 0}
                 <div class="export-section">
                   <p class="export-title">Export to Quizlet</p>
-                  <Button
-                    onclick={handleCopyQuizToClipboard}
-                    title="Copy quiz to clipboard"
-                  >
-                    Copy to Clipboard
-                  </Button>
+                  <button class="copy-btn" onclick={handleCopyQuizToClipboard} title="Copy quiz to clipboard">
+                    {copiedQuiz ? 'Copied!' : 'Copy to Clipboard'}
+                  </button>
                 </div>
               {/if}
             </div>
@@ -1222,6 +1226,23 @@
   }
   .button-stack Button {
     width: fit-content;
+  }
+
+  .copy-btn {
+    padding: 8px 22px;
+    border: 2px solid #000;
+    border-radius: 999px;
+    background: #fff;
+    color: #000;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .copy-btn:hover {
+    background: #000;
+    color: #fff;
   }
 
 </style>
