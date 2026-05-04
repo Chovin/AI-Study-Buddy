@@ -472,17 +472,25 @@ ipcMain.handle('generate-quiz', async (_, { model, topicId, fileIds, numberOfQue
       finishTask()
       return quiz
     } catch (error) {
-      console.log('Error generating quiz. Trying again. ', error)
-      updateTask({msg: `Error generating quiz. Trying again. ${error}`, progress: 0})
-      tries += 1
-      if (tries >= 5) {
-        failTask(`Failed too many times to generate a quiz. Something is probably wrong.`, error)
-        throw new Error(`Failed too many times to generate a quiz. Something is probably wrong. You may want to try a different model. ${error}`)
-      }
-      continue
+      tries = handleGenerationError('a quiz', error, tries, failTask, updateTask)
     }
   }
 })
+
+function handleGenerationError(generationKind, error, tries, failTask, updateTask) {
+  if (error.message == 'Model removed from model listing') {
+    failTask(`Error: Model Missing from Ollama's listing`)
+    throw new Error("Model missing from Ollama's listing")
+  }
+  console.log(`Error generating ${generationKind}. Trying again. `, error)
+  updateTask({msg: `Error generating ${generationKind}. Trying again. ${error}`, progress: 0})
+  tries += 1
+  if (tries >= 5) {
+    failTask(`Failed too many times to generate ${generationKind}. Something is probably wrong.`, error)
+    throw new Error(`Failed too many times to generate ${generationKind}. Something is probably wrong. You may want to try a different model. ${error}`)
+  }
+  return tries
+}
 
 async function generateFlashcards(model, topicId, fileIds, numberOfCards, difficulty) {
   try {
@@ -624,14 +632,7 @@ ipcMain.handle('generate-flashcards', async (_, { model, topicId, fileIds, numbe
       finishTask()
       return flashcards
     } catch (error) {
-      console.log('Error generating flashcards. Trying again. ', error)
-      updateTask({ msg: `Error generating flashcards. Trying again. ${error}`, progress: 0 })
-
-      tries += 1
-      if (tries >= 5) {
-        failTask(`Failed too many times to generate flashcards. Something is probably wrong.`, error)
-        throw new Error(`Failed too many times to generate flashcards. You may want to try a different model. ${error}`)
-      }
+      tries = handleGenerationError('flashcards', error, tries, failTask, updateTask)
 
       continue
     }
@@ -740,16 +741,7 @@ ipcMain.handle('generate-quick-summary', async (_, { model, topicId, fileIds }) 
       finishTask()
       return summary
     } catch (error) {
-      console.log('Error generating quick summary. Trying again. ', error)
-      updateTask({ msg: `Error generating quick summary. Trying again. ${error}`, progress: 0 })
-
-      tries += 1
-      if (tries >= 5) {
-        failTask(`Failed too many times to generate a quick summary. Something is probably wrong.`, error)
-        throw new Error(`Failed too many times to generate a quick summary. Something is probably wrong. You may want to try a different model. ${error}`)
-      }
-
-      continue
+      tries = handleGenerationError('a quick summary', error, tries, failTask, updateTask)
     }
   }
 })
@@ -769,16 +761,7 @@ ipcMain.handle('generate-detailed-summary', async (_, { model, topicId, fileIds 
       finishTask()
       return summary
     } catch (error) {
-      console.log('Error generating detailed summary. Trying again. ', error)
-      updateTask({ msg: `Error generating detailed summary. Trying again. ${error}`, progress: 0 })
-
-      tries += 1
-      if (tries >= 5) {
-        failTask(`Failed too many times to generate a detailed summary. Something is probably wrong.`, error)
-        throw new Error(`Failed too many times to generate a detailed summary. Something is probably wrong. You may want to try a different model. ${error}`)
-      }
-
-      continue
+      tries = handleGenerationError('a detailed summary', error, tries, failTask, updateTask)
     }
   }
 })

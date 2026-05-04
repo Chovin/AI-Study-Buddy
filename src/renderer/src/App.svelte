@@ -408,6 +408,13 @@
 
       await fetchChatHistory(selectedTopic.id)
     } catch (error) {
+      if (error.message.includes("Model missing from Ollama's listing")) {
+        // select default model
+        selectedModel = Object.entries(models)
+          .filter(([name, details]) => details.summarizer)[0]
+        
+        await loadModels()
+      }
       responseString = error.message
 
       setTimeout(() => {

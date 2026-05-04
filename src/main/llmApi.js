@@ -709,10 +709,21 @@ class LLMInterface {
     
   }
 
-  async chatWithFileContext({files = [], systemMessage = null, promptMessage = null, model = null, topicId = null, saveToHistory = true}) {
+  async chatWithFileContext({
+    files = [], 
+    systemMessage = null, 
+    promptMessage = null, 
+    model = null, 
+    topicId = null, 
+    saveToHistory = true, 
+    triedAfterReset = false
+  }) {
+
     if (!this.running) throw new Error("LLM not loaded yet")
 
     model = model || this.selectedModel
+    const osmsg = systemMessage
+    const ofiles = files
 
     if (!(topicId && this.db)) { throw new Error("topicId and database are required to fetch chat history") }
 
@@ -803,6 +814,26 @@ Do NOT say "the context".
 
     if (!response.ok) {
       const text = await response.text();
+      if ((text.includes('Model not found') || text.includes('Model wrong. not found'))) {
+        if (!triedAfterReset) {
+          await this.updateWebUIModelList()
+          return await this.chatWithFileContext({files: ofiles, systemMessage: osmsg, promptMessage, model, topicId, saveToHistory, triedAfterReset: true})
+        } else {
+          const options = {
+            type: 'error',
+            buttons: ['Remove Model Listing', 'Cancel'],
+            defaultId: 0,
+            title: 'Model Missing',
+            message: `The model ${model} was likely removed from Ollama's list of available models`,
+            detail: 'Remove the model from the model list?'
+          }
+          const { response } = await dialog.showMessageBox(options)
+          if (response === 0) {
+            delete this._models[model]
+            throw new Error('Model removed from model listing')
+          }
+        }
+      }
       throw new Error(`WebUI chat failed: ${text}`);
     }
 
