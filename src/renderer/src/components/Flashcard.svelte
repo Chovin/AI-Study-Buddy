@@ -1,5 +1,5 @@
 <script>
-  import Button from '@smui/button'
+  import AppButton from './AppButton.svelte';
   import CircularProgress from '@smui/circular-progress'
   import { renderMarkdown } from '../utils/markdown.js'
 
@@ -68,13 +68,13 @@
     </div>
 
     <div class="quiz-actions">
-      <Button
-        class="generate-btn"
-        onclick={onGenerateFlashcards}
+      <AppButton
+        type="raised"
+        variant="flashcards"
+        label="Generate Flashcards"
         disabled={!selectedTopic || generatingFlashcards}
-      >
-        Generate Flashcards
-      </Button>
+        onClick={onGenerateFlashcards}
+      ></AppButton>
 
       <CircularProgress
         indeterminate

@@ -1,13 +1,8 @@
 <script>
-  import Button from '@smui/button'
   import CircularProgress from '@smui/circular-progress'
   import { tick } from 'svelte'
   import { renderMarkdown } from '../utils/markdown.js'
-  import {
-    ListCheck,
-    SwatchBook,
-    NotepadText
-  } from 'lucide-svelte'
+  import AppButton from './AppButton.svelte';
 
   let {
     selectedTopic = null,
@@ -168,36 +163,19 @@
   const getContentDisplay = (message) => {
     if (!message.role) return null
 
-    // For generated content, show as button
-    if (message.role === 'quiz') {
-      return {
-        type: 'quiz',
-        label: 'Generated Quiz',
-        topic: 'quiz',
-        icon: ListCheck,
-        onClick: () => onOpenQuiz?.(message)
-      }
-    }
-    if (message.role === 'flashcard') {
-      return {
-        type: 'flashcard',
-        label: 'Generated Flashcards',
-        topic: 'flashcards',
-        icon: SwatchBook,
-        onClick: () => onOpenFlashcards?.(message)
-      }
-    }
-    if (message.role === 'content_summary') {
-      return {
-        type: 'content_summary',
-        label: 'Generated Summary',
-        topic: 'summary',
-        icon: NotepadText,
-        onClick: () => onOpenSummary?.(message)
+    const variants = {
+      quiz: {
+        label: 'Generated Quiz', topic: 'quiz', onClick: () => onOpenQuiz?.(message)
+      },
+      flashcard: {
+        label: 'Generated Flashcards', topic: 'flashcards', onClick: () => onOpenFlashcards?.(message)
+      },
+      content_summary: {
+        label: 'Generated Summary', topic: 'summary', onClick: () => onOpenSummary?.(message)
       }
     }
 
-    return null
+    return variants[message.role]
   }
 
   function formatDate(date = new Date()) {
@@ -255,16 +233,12 @@
               }} 
               style:animation-delay={`${newMessages.includes(message.id) ? newMessages.indexOf(message.id) * 100 : 0}ms`}>
             <div class="message-content">
-              <Button
-                variant="raised"
-                class={"content-button " + "selected-" + getContentDisplay(message).topic}
-                onclick={getContentDisplay(message).onClick}
-              >
-                <span class="content-icon">
-                  <svelte:component this={getContentDisplay(message).icon} size={20} />
-                </span>
-                <span>{getContentDisplay(message).label}</span>
-              </Button>
+              <AppButton
+                type="raised"
+                variant={getContentDisplay(message).topic}
+                onClick={getContentDisplay(message).onClick}
+                label={getContentDisplay(message).label}
+              ></AppButton>
             </div>
           </div>
         {/if}
@@ -459,11 +433,6 @@
     word-wrap: break-word;
     border: 1px solid #ef5350;
   }
-
-  :global(.content-button) {
-    font-weight: 600 !important;
-  }
-
   .content-icon {
     display: inline-flex;
     align-items: center;

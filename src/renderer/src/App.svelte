@@ -10,6 +10,8 @@
   import Chat from './components/Chat.svelte'
   import FloatingTimer from './components/FloatingTimer.svelte'
   import Flashcard from './components/Flashcard.svelte'
+  import AppButton from './components/AppButton.svelte';
+
 
   import List, { Item } from '@smui/list'
   import Button from '@smui/button'
@@ -30,7 +32,7 @@
   let active = $state('topics')
 
   let ollamaReady = $state(false)
-  let webuiReady = $state(true)
+  let webuiReady = $state(false)
 
   let selectedTopic = $state(null)
   let prevTopicId = $state(null)
@@ -662,12 +664,13 @@
             </div>
 
             <div class="summary-actions">
-              <Button
-                onclick={generateQuickSummary}
+              <AppButton
+                type="raised"
+                variant="summary"
+                label="Generate Quick Summary"
                 disabled={!webuiReady || !selectedTopic || generatingQuickSummary}
-              >
-                Generate Quick Summary
-              </Button>
+                onClick={generateQuickSummary}
+              ></AppButton>
 
               <CircularProgress
                 indeterminate
@@ -675,12 +678,13 @@
                 closed={!generatingQuickSummary}
               />
 
-              <Button
-                onclick={generateDetailedSummary}
+              <AppButton
+                type="raised"
+                variant="summary"
+                label="Generate Detailed Summary"
                 disabled={!webuiReady || !selectedTopic || generatingDetailedSummary}
-              >
-                Generate Detailed Summary
-              </Button>
+                onClick={generateDetailedSummary}
+              ></AppButton>
 
               <CircularProgress
                 indeterminate
@@ -746,12 +750,13 @@
               </div>
 
               <div class="quiz-actions">
-                <Button
-                  onclick={generateQuiz}
+                <AppButton
+                  type="raised"
+                  variant="quiz"
+                  label="Generate Quiz"
                   disabled={!webuiReady || !selectedTopic || generating || !selectedModelIsUsable}
-                >
-                  Generate Quiz
-                </Button>
+                  onClick={generateQuiz}
+                ></AppButton>
 
                 <CircularProgress
                   indeterminate
@@ -1034,6 +1039,7 @@
     align-items: center;
     gap: 12px;
     margin-bottom: 16px;
+    margin-top: 16px;
     flex-wrap: wrap;
   }
 

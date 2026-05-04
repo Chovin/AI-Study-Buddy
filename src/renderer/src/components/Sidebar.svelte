@@ -1,32 +1,26 @@
 <script>
   import {
-    Folder,
-    ListCheck,
-    MessageSquare,
-    Clock3,
-    SwatchBook,
-    NotepadText,
     PanelLeftClose,
     PanelLeftOpen
   } from 'lucide-svelte'
+  import AppButton from './AppButton.svelte';
 
-  export let collapsed = false
-  export let active = 'topics'
-  export let disabledTabs = []
+  let {
+    collapsed = $bindable(false),
+    active = $bindable('topics'),
+    disabledTabs = [],
+  } = $props()
 
   const items = [
-    { id: 'topics', label: 'Topics', icon: Folder },
-    { id: 'quiz', label: 'Quiz', icon: ListCheck },
-    { id: 'flashcards', label: 'Flashcards', icon: SwatchBook },
-    { id: 'summary', label: 'Summary', icon: NotepadText },
-    { id: 'chat', label: 'Chat', icon: MessageSquare },
-    { id: 'timer', label: 'Timer', icon: Clock3 }
+    'topics', 'quiz', 'flashcards', 'summary', 'chat', 'timer'
   ]
 
   // Keep Topics active if something disabled becomes active
-  $: if (disabledTabs.includes(active)) {
-    active = 'topics'
-  }
+  $effect(() => {
+    if (disabledTabs.includes(active)) {
+      active = 'topics'
+    }
+  })
 
   function toggleSidebar() {
     collapsed = !collapsed
@@ -58,27 +52,14 @@
   </div>
 
   <nav class="nav">
-    {#each items as item}
-      <button
-        type="button"
-        class="nav-item"
-        class:disabled={isDisabled(item.id)}
-        class:selected-topics={active === item.id && item.id === 'topics'}
-        class:selected-quiz={active === item.id && item.id === 'quiz'}
-        class:selected-flashcards={active === item.id && item.id === 'flashcards'}
-        class:selected-summary={active === item.id && item.id === 'summary'}
-        class:selected-chat={active === item.id && item.id === 'chat'}
-        class:selected-timer={active === item.id && item.id === 'timer'}
-        disabled={isDisabled(item.id)}
-        on:click={() => setActive(item.id)}
-        title={collapsed ? item.label : ''}
-      >
-        <svelte:component this={item.icon} size={20} />
-
-        {#if !collapsed}
-          <span>{item.label}</span>
-        {/if}
-      </button>
+    {#each items as item (item)}
+      <AppButton
+        variant={item}
+        onClick={() => setActive(item)}
+        collapsed={collapsed}
+        active={active == item}
+        disabled={isDisabled(item)}
+      ></AppButton>
     {/each}
   </nav>
 </aside>
@@ -146,105 +127,4 @@
     width: 100%;
   }
 
-  .nav-item {
-    width: 100%;
-    border: none;
-    background: transparent;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 14px;
-    text-align: left;
-    box-sizing: border-box;
-    text-transform: none;
-    letter-spacing: normal;
-    transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
-  }
-
-  .nav-item:hover {
-    background: #ececec;
-    color: black;
-  }
-
-  .nav-item.disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .nav-item.disabled:hover {
-    background: transparent;
-  }
-
-  .selected-topics {
-    background: #ec5f54 !important;
-    color: white !important;
-    font-weight: 600;
-  }
-
-  .selected-topics:hover {
-    background: #ef7e76 !important;
-    color: white !important;
-  }
-
-  .selected-quiz {
-    background: #ef8c4a !important;
-    color: white !important;
-    font-weight: 600;
-  }
-
-  .selected-quiz:hover {
-    background: #f2a36e !important;
-    color: white !important;
-  }
-
-  .selected-flashcards {
-    background: #f9df6f !important;
-    color: #222 !important;
-    font-weight: 600;
-  }
-
-  .selected-flashcards:hover {
-    background: #fae58b !important;
-  }
-
-  .selected-summary {
-    background: #5cb35a !important;
-    color: white !important;
-    font-weight: 600;
-  }
-
-  .selected-summary:hover {
-    background: #7cc27a !important;
-    color: white !important;
-  }
-
-  .selected-chat {
-    background: #63b1f5 !important;
-    color: white !important;
-    font-weight: 600;
-  }
-
-  .selected-chat:hover {
-    background: #82c0f7 !important;
-    color: white !important;
-  }
-
-  .selected-timer {
-    background: #d198f7 !important;
-    color: white !important;
-    font-weight: 600;
-  }
-
-  .selected-timer:hover {
-    background: #daacf8 !important;
-    color: white !important;
-  }
-
-  .sidebar.collapsed .nav-item {
-    justify-content: center;
-    padding: 12px 0;
-  }
 </style>
