@@ -189,8 +189,7 @@ ipcMain.handle('get-last-model', async () => {
 
 ipcMain.handle('create-topic', async (_, topicName) => {
   try {
-    await db.createTopic(topicName);
-    return 'Topic created successfully';
+    return await db.createTopic(topicName);
   } catch (err) {
     throw new Error(err.message);
   }

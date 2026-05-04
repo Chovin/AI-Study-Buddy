@@ -1,53 +1,43 @@
 <script>
-  import { onMount, createEventDispatcher, tick } from 'svelte'
+  import { onMount, tick } from 'svelte'
   import IconButton from '@smui/icon-button'
   import { Folder, Pencil, Trash2, Check, X, CirclePlus } from 'lucide-svelte'
 
-  export let selectedTopic = null
+  let {
+    selectedTopic = null,
+    selectedTopicId = $bindable(null),
+    topics = $bindable([])
+  } = $props()
 
-  const dispatch = createEventDispatcher()
-
-  let topics = []
-  let newTopic = ''
-  let editingTopicId = null
-  let editingTopicName = ''
-  let editInputRef = null
+  let newTopic = $state('')
+  let editingTopicId = $state(null)
+  let editingTopicName = $state('')
+  let editInputRef = $state(null)
 
   async function fetchTopics() {
     topics = await window.api.getTopics()
 
-    if (selectedTopic) {
-      const updatedSelected = topics.find(topic => topic.id === selectedTopic.id)
-      selectedTopic = updatedSelected || null
-    }
-
     if (!selectedTopic && topics.length > 0) {
-      selectedTopic = topics[0]
+      selectedTopicId = String(topics[0].id)
     }
-  }
-
-  function notifyTopicsUpdated() {
-    dispatch('topicsUpdated')
   }
 
   async function createTopic() {
     const name = newTopic.trim()
     if (!name) return
 
-    const createdTopic = await window.api.createTopic(name)
+    const createdTopicId = await window.api.createTopic(name)
     newTopic = ''
 
     await fetchTopics()
 
-    if (createdTopic?.id) {
-      const found = topics.find(topic => topic.id === createdTopic.id)
-      if (found) selectedTopic = found
+    if (createdTopicId) {
+      const found = topics.find(topic => topic.id === createdTopicId)
+      if (found) selectedTopicId = String(found.id)
     } else {
       const found = topics.find(topic => topic.name === name)
-      if (found) selectedTopic = found
+      if (found) selectedTopicId = String(found.id)
     }
-
-    notifyTopicsUpdated()
   }
 
   async function startEdit(topic) {
@@ -67,7 +57,6 @@
     editingTopicName = ''
 
     await fetchTopics()
-    notifyTopicsUpdated()
   }
 
   function cancelEdit() {
@@ -80,18 +69,16 @@
 
     await window.api.deleteTopic(topic.id)
 
-    if (selectedTopic?.id === topic.id) selectedTopic = null
+    if (selectedTopic?.id === topic.id) selectedTopicId = null
 
     editingTopicId = null
     editingTopicName = ''
 
     await fetchTopics()
-    notifyTopicsUpdated()
   }
 
   function selectTopic(topic) {
-    selectedTopic = topic
-    notifyTopicsUpdated()
+    selectedTopicId = String(topic.id)
   }
 
   async function handleEditKeyDown(event) {

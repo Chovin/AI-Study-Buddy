@@ -14,7 +14,6 @@
 
 
   import List, { Item } from '@smui/list'
-  import Button from '@smui/button'
   import IconButton from '@smui/icon-button'
   import CircularProgress from '@smui/circular-progress'
   import { onMount } from 'svelte'
@@ -34,7 +33,8 @@
   let ollamaReady = $state(false)
   let webuiReady = $state(false)
 
-  let selectedTopic = $state(null)
+  let topics = $state([])
+  let selectedTopicId = $state(null)
   let prevTopicId = $state(null)
   let files = $state([])
 
@@ -67,7 +67,6 @@
   let chatExhausted = $state(false)
 
   let ignoreScroll = $state(false)
-  let topicChooserRef
   let webuiUnlockTimer = null
 
   let scrollPositions = $state(new Map([
@@ -78,6 +77,10 @@
     ['quiz', 0],
     ['timer', 0]
   ]))
+
+  let selectedTopic = $derived.by(() => {
+    return topics.find(t => String(t.id) === String(selectedTopicId)) ?? null
+  })
 
   let disabledTabs = $derived.by(() => {
     return webuiReady ? [] : ['chat', 'summary', 'flashcards', 'quiz']
@@ -239,6 +242,12 @@
     }
   })
 
+  $effect(() => {
+    if (topics.length && !selectedTopicId) {
+      selectedTopicId = String(topics[0].id)
+    }
+  })
+
   onMount(() => {
     loadModels()
 
@@ -322,16 +331,6 @@
       if (selectedTopic) {
         await fetchFiles(selectedTopic.id)
       }
-    }
-  }
-
-  async function refreshTopics() {
-    await topicChooserRef?.refreshTopics()
-
-    if (selectedTopic) {
-      const topics = await window.api.getTopics()
-      const updatedTopic = topics.find(topic => topic.id === selectedTopic.id)
-      selectedTopic = updatedTopic || null
     }
   }
 
@@ -568,8 +567,8 @@
         />
 
         <TopicChooser
-          bind:this={topicChooserRef}
-          bind:selectedTopic
+          {topics}
+          bind:selectedTopicId
         />
       </div>
 
@@ -592,8 +591,9 @@
               <div class="topics-card">
                 <div class="topics-card-scroll">
                   <TopicManager
-                    bind:selectedTopic
-                    on:topicsUpdated={refreshTopics}
+                    {selectedTopic}
+                    bind:selectedTopicId
+                    bind:topics
                   />
                 </div>
               </div>

@@ -199,7 +199,7 @@ class Database {
   
   async createTopic(name) {
     const query = `INSERT INTO topics (name) VALUES (?)`;
-    await this.runAsync(query, [name]);
+    return (await this.runAsync(query, [name])).lastID;
   }
 
   async addFile(topicId, originalFileName) {
