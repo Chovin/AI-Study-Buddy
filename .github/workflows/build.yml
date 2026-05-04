@@ -5,7 +5,7 @@ on:
       - 'v*' # Trigger on version tags (e.g., v1.0.0)
 
 jobs:
-  release:
+  build:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -15,11 +15,11 @@ jobs:
         # Build on Windows, macOS, and Linux
         include:
           - os: ubuntu-latest
-            args: --linux AppImage
+            script: build:linux
           - os: windows-latest
-            args: --win
+            script: build:win
           - os: macos-latest
-            args: --mac
+            script: build:mac
 
     steps:
       - uses: actions/checkout@v4
@@ -27,8 +27,42 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - uses: samuelmeuli/action-electron-builder@v1
+
+      - run: npm run ${{ matrix.script }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          args: ${{ matrix.args }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          release: true # Creates a draft release on GitHub
+          name: ${{ matrix.os }}-build
+          path: |
+            dist/**
+            *.AppImage
+            *.exe
+            *.dmg
+  
+  release:
+    name: Create Github Release
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure
+        run: ls -R artifacts
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          name: "AI Study Buddy ${{ github.ref_name }}"
+          generate_release_notes: true
+          files: |
+            artifacts/**/*
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
