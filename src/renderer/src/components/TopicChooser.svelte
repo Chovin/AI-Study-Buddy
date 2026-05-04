@@ -7,6 +7,17 @@
   } = $props()
 
   let refreshKey = $state(0)
+  let selectedTopicName = $state("")
+  
+  $effect(() => {
+    if (topics.length) {
+      const selectedTopic = topics.find((t) => String(t.id) == String(selectedTopicId))
+      if (selectedTopicName != selectedTopic.name) {
+        selectedTopicName = selectedTopic.name
+        refreshKey += 1
+      }
+    }
+  })
 </script>
 
 <div class="selector-wrap">
