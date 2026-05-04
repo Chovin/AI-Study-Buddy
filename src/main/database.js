@@ -72,6 +72,7 @@ class File {
   }
 
   canRetry() {
+    if (this.isPending()) return true;
     if (!this.hasErrored()) return false;
     const retryableErrors = ['timeout', 'network', 'temporarily unavailable', 'soffice command was not found'];
     return retryableErrors.some(err => this.processing_error?.toLowerCase().includes(err));
