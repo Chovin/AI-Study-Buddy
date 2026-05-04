@@ -202,6 +202,24 @@ $ npm run build:linux
 
 the executable will appear in the `dist` folder. 
 
+### Publish Releases
+
+```bash
+$ # this project uses Github Actions to automatically build / publish 
+$ # draft releases. Run one of these commands to push a release
+$ # patch bumps the rightmost version number (ex. bumps the 0 in v2.1.0)
+$ npm run patch
+$ # minor bumps the middle version number (ex. bumps the 1 in v2.1.0)
+$ npm run minor
+$ # major bumps the leftmost version number (ex. bumps the 2 in v2.1.0)
+$ npm run major
+```
+
+After publishing a draft release, you must publish the release. To do this, go to the [releases page](https://github.com/Chovin/AI-Study-Buddy/releases), locate your release, then click the edit button.
+![edit button](./docs/assets/Edit%20Draft%20Releases.png)
+Now scroll down throught the assets making sure they have all uploaded successfully (If they haven't uploaded successfully they may be in the process of uploading, so wait awhile), then click `Publish Release`
+![publish release](./docs/assets/Publish%20Release.png)
+
 #### Troubleshooting
 
 If the app doesn't pop up when you open it, you may need to close it and reopen it again. Not sure why
