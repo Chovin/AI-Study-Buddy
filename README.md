@@ -3,15 +3,17 @@
 ## Running releases
 
 1. Install [Python 3.11 or 3.12](https://www.python.org/downloads/latest/python3.12/)
-2. Open the app
-3. Allow the app time to download Ollama and Open WebUI
-4. Allow the app time to download its first model
-5. It is recommended to also download and use at least llama3.2:3b as smaller models generate lower quality content, although be aware that larger models require much more memory and may slow down or freeze your computer
-6. Create topics, upload files, and generate study materials
+2. Download the relevant release from the [releases page](https://github.com/Chovin/AI-Study-Buddy/releases)
+3. Open the app
+4. Allow the app time to download Ollama and Open WebUI
+5. Allow the app time to download its first model
+6. It is recommended to also download and use at least llama3.2:3b as smaller models generate lower quality content, although be aware that larger models require much more memory and may slow down or freeze your computer
+7. Create topics, upload files, and generate study materials
 
 ### FAQ
 
-1. If you get "Port 8080 is already in use" when the app is starting Open WebUI, you will need to close the program using that port. On Mac/Linux, you can open a terminal and type `lsof -i :8080`. This will list the processes currently using that port. Take note of the number in the `PID` column. This is the process id. Then kill that process by entering the command `kill <PID>` where `<PID>` is the number in the `PID` column. For instance if the `PID` is `79673`, then you would type `kill 79673`. On Windows you would open a cmd prompt and type `netstat -ano | findstr :8080` and then use `taskkill /PID <PID> /F` to kill the process.
+1. If you are on a Mac and are getting `“ai-study-buddy” is damaged and can’t be opened. You should move it to the Trash.`, this is likely because we published this without an Apple Developer account ($99/year) so Apple doesn't recognize it as a properly signed app. To work around this, open a terminal and run `xattr -cr <path_to_app>/ai-study-buddy.app`, replacing `<path_to_app>` with the path to the app on your computer. for example if you put it into `/Applications/`, then you would run `xattr -cr /Applications/ai-study-buddy.app`
+2. If you get "Port 8080 is already in use" when the app is starting Open WebUI, you will need to close the program using that port. On Mac/Linux, you can open a terminal and type `lsof -i :8080`. This will list the processes currently using that port. Take note of the number in the `PID` column. This is the process id. Then kill that process by entering the command `kill <PID>` where `<PID>` is the number in the `PID` column. For instance if the `PID` is `79673`, then you would type `kill 79673`. On Windows you would open a cmd prompt and type `netstat -ano | findstr :8080` and then use `taskkill /PID <PID> /F` to kill the process.
 
 ## User Manual 
 **When the application first launches, some features are temporarily unavailable while the system finishes initializing.**
