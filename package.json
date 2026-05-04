@@ -22,6 +22,9 @@
     "appId": "com.cs495.aistudybuddy",
     "mac": {
       "identity": null
+    },
+    "snap": {
+      "publish": null
     }
   },
   "comments": {

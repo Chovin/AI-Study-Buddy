@@ -13,15 +13,22 @@ jobs:
     strategy:
       matrix:
         # Build on Windows, macOS, and Linux
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+					- os: ubuntu-latest
+						args: --linux AppImage
+					- os: windows-latest
+						args: --win
+					- os: macos-latest
+						args: --mac
 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - run: npm install
       - uses: samuelmeuli/action-electron-builder@v1
         with:
+          args: ${{ matrix.args }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           release: true # Creates a draft release on GitHub
