@@ -14,12 +14,12 @@ jobs:
       matrix:
         # Build on Windows, macOS, and Linux
         include:
-					- os: ubuntu-latest
-						args: --linux AppImage
-					- os: windows-latest
-						args: --win
-					- os: macos-latest
-						args: --mac
+          - os: ubuntu-latest
+            args: --linux AppImage
+          - os: windows-latest
+            args: --win
+          - os: macos-latest
+            args: --mac
 
     steps:
       - uses: actions/checkout@v4
