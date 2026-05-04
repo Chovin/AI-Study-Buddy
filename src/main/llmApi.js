@@ -1,7 +1,7 @@
 import { ElectronOllama } from 'electron-ollama'
 import { app, safeStorage, net, dialog } from 'electron'
 import { Ollama } from 'ollama'
-import { runCommand, makeRequest, generateSecurePassword, sleep } from './helpers'
+import { runCommand, makeRequest, generateSecurePassword, sleep, killPort } from './helpers'
 import models from './models'
 import progressManager from './progressManager'
 import AsyncQueue from './asyncQueue'
@@ -193,6 +193,44 @@ class LLMInterface {
   }
 
   async startOpenWebUIProcess() {
+    this._portConflict = false
+
+    const portConflictPromise = new Promise((resolve) => {
+      this._portConflictResolve = resolve
+    })
+
+    const webuiPromise = this._runWebUI()
+
+    const result = await Promise.race([
+      webuiPromise,
+      portConflictPromise
+    ])
+
+    if (result?.type === 'port_conflict') {
+
+      const options = {
+        type: 'error',
+        buttons: ['Kill & Retry', 'Exit App'],
+        defaultId: 0,
+        title: 'Port 8080 in use',
+        message: 'Port 8080 is already in use by another application',
+        detail: 'This may be due to Open WebUI not shutting down correctly previously. ' + 
+                'If you are sure Open WebUI is the one using this port, ' +
+                'you can safely kill the process.'
+      }
+      const { response } = await dialog.showMessageBox(options)
+      if (response === 0) {
+        await killPort(8080)
+        return await this.startOpenWebUIProcess()
+      } else {
+        app.quit()
+      }
+    }
+  }
+
+  async _runWebUI() {
+    progressManager.updateTask(WUIPID, {error: null})
+    
     const env = {
       ...process.env,
       DATA_DIR: app.getPath('userData'),
@@ -226,7 +264,14 @@ class LLMInterface {
           }
         }
         if (str.match('address already in use')) {
-          progressManager.failTask(WUIPID, 'Failed to start Open WebUI', new Error('Port 8080 is already in use. Please close any application using this port and try again.'))
+          if (!this._portConflict) {
+            this._portConflict = true
+            this._portConflictResolve?.({
+              type: 'port_conflict'
+            })
+          }
+          progressManager.updateTask(WUIPID, {error: 'Failed to start Open WebUI. Port 8080 is already in use. Please close any application using this port and try again.'})
+          return
         }
         console.log(`[WebUI${error ? ' Error' : ''}]: ${str}`)
 

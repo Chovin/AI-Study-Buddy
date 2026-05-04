@@ -1,6 +1,7 @@
 import { net } from "electron";
 import { spawn } from 'child_process'
 import crypto from 'crypto'
+import kill from "kill-port";
 
 /**
  * Generates a secure random password.
@@ -33,7 +34,12 @@ export function makeRequest(url, method, token = null, body = null) {
       let data = '';
       response.on('data', (chunk) => { data += chunk; });
       response.on('end', () => {
-        const json = data ? JSON.parse(data) : {};
+        let json
+        try {
+          json = data ? JSON.parse(data) : {}
+        } catch (err) {
+          return reject(new Error('Invalid JSON response'))
+        }
         if (response.statusCode >= 200 && response.statusCode < 300) {
           resolve(json);
         } else {
@@ -115,4 +121,8 @@ export async function runCommand(cmd, args, options={}) {
 
 export async function sleep(ms) {
   return new Promise(res => setTimeout(res, ms))
+}
+
+export async function killPort(port) {
+  kill(port)
 }
