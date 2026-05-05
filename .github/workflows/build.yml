@@ -56,7 +56,7 @@ jobs:
       - name: Generate changelog with contributors
         id: changelog
         run: |
-          git fetch --tags
+          git fetch --prune --tags --force
 
           BASE=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if [ -z "$BASE" ]; then
@@ -96,7 +96,7 @@ jobs:
             echo ""
             echo "## 👥 Contributors"
             echo "$CONTRIBUTORS"
-            
+
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
