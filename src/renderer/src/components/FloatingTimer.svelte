@@ -79,7 +79,14 @@
   <div class="time-text">{displayTime}</div>
 
   <div class="action-row">
-    <button class="mini-btn" on:click={timerStore.toggleStartPause}>
+    <button class="mini-btn" on:click={() => {
+      if (!$timerStore.isRunning && $timerStore.timerTimeLeft == 0 && $timerStore.mode == 'timer') {
+        timerStore.reset()
+        timerStore.toggleStartPause()
+      } else {
+        timerStore.toggleStartPause()
+      }
+    }}>
       {#if $timerStore.isRunning}
         <Pause size={22} />
       {:else}
