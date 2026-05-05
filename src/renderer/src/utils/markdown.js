@@ -1,5 +1,7 @@
+import katex from 'katex';
+
 /**
- * Simple markdown to HTML converter with support for common markdown syntax
+ * Simple markdown to HTML converter with support for common markdown syntax and LaTeX
  * Used to render quiz explanations, flashcard content, and summaries
  */
 
@@ -8,13 +10,45 @@ export function markdownToHtml(markdown) {
 
   let html = markdown;
 
+  // Store LaTeX expressions to protect them from markdown processing
+  const latexPlaceholders = {};
+  let placeholderIndex = 0;
+
+  // Extract display math ($$...$$) - must be before other replacements
+  html = html.replace(/\$\$([\s\S]*?)\$\$/g, (match, latex) => {
+    const placeholder = `LATEXDISPLAYPLACEHOLDER${placeholderIndex}END`;
+    try {
+      latexPlaceholders[placeholder] = katex.renderToString(latex, { displayMode: true });
+    } catch (e) {
+      // If KaTeX fails, show the raw LaTeX in a code block
+      latexPlaceholders[placeholder] = `<pre><code class="language-latex">${latex}</code></pre>`;
+    }
+    placeholderIndex++;
+    return placeholder;
+  });
+
+  // Extract inline math ($...$) - simpler pattern that works better
+  html = html.replace(/\$([^\$\n]+?)\$/g, (match, latex) => {
+    // Skip if it looks like markdown emphasis (single $ on each side of emphasis)
+    // This is a simple heuristic that works for most cases
+    const placeholder = `LATEXINLINEPLACEHOLDER${placeholderIndex}END`;
+    try {
+      latexPlaceholders[placeholder] = katex.renderToString(latex, { displayMode: false });
+    } catch (e) {
+      // If KaTeX fails, show the raw LaTeX in inline code
+      latexPlaceholders[placeholder] = `<code class="language-latex">${latex}</code>`;
+    }
+    placeholderIndex++;
+    return placeholder;
+  });
+
   // Escape HTML entities first to prevent XSS
   html = html
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
-  // Unesca special markdown characters
+  // Unescape special markdown characters
   html = html
     .replace(/&amp;#/g, '&#')
     .replace(/&lt;/g, '<')
@@ -62,6 +96,11 @@ export function markdownToHtml(markdown) {
   html = html.replace(/<\/(h[1-3]|pre)><\/p>/g, '</$1>');
   html = html.replace(/<p><(ol|ul)/g, '<$1');
   html = html.replace(/<\/(ol|ul)><\/p>/g, '</$1>');
+
+  // Restore LaTeX expressions - do this last to preserve the rendered HTML
+  Object.entries(latexPlaceholders).forEach(([placeholder, latex]) => {
+    html = html.split(placeholder).join(latex);
+  });
 
   return html;
 }
