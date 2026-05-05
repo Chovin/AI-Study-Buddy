@@ -466,7 +466,7 @@ erDiagram
     CHAT_HISTORY {
         INTEGER id PK "Primary key"
         INTEGER topic_id FK "References TOPICS(id)"
-        TEXT role "Message role (user/system/assistant)"
+        TEXT role "Message role (user/system/assistant/quiz/flashcard/content_summary/motivation)"
         TEXT content "Chat message content"
         TEXT files_referenced "Optional referenced file ids"
         DATETIME timestamp "Auto timestamp"
