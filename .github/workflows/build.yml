@@ -48,6 +48,58 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+        
+      - name: Generate changelog with contributors
+        id: changelog
+        run: |
+          git fetch --tags
+
+          BASE=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$BASE" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="$BASE..HEAD"
+          fi
+
+          FEATURES=$(git log "$RANGE" --pretty=format:"- %s (%h)" | grep -i "feat" || true)
+          FIXES=$(git log "$RANGE" --pretty=format:"- %s (%h)" | grep -i "fix" || true)
+          CHORES=$(git log "$RANGE" --pretty=format:"- %s (%h)" | grep -i "chore" || true)
+          OTHER=$(git log "$RANGE" --pretty=format:"- %s (%h)" | grep -vi "feat\|fix\|chore" || true)
+
+          CONTRIBUTORS=$(git log --format='%aN' "$RANGE" \
+            | grep -vE "dependabot|github-actions" \
+            | sort -u \
+            | paste -sd ", ")
+
+          {
+            echo "CHANGELOG<<EOF"
+
+            echo "## 🚀 Features"
+            echo "$FEATURES"
+
+            echo ""
+            echo "## 🐛 Fixes"
+            echo "$FIXES"
+
+            echo ""
+            echo "## 🧹 Chores"
+            echo "$CHORES"
+
+            echo ""
+            echo "## 📦 Other"
+            echo "$OTHER"
+
+            echo ""
+            echo "## 👥 Contributors"
+            echo "$CONTRIBUTORS"
+            
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -61,7 +113,8 @@ jobs:
         with:
           draft: true
           name: "AI Study Buddy ${{ github.ref_name }}"
-          generate_release_notes: true
+          body: |
+            ${{ steps.changelog.outputs.CHANGELOG }}
           files: |
             artifacts/**/*
         env:
