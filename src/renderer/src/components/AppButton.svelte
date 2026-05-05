@@ -1,8 +1,8 @@
-<div>
+<div class="button-wrapper">
   {#if type=="raised"}
     <Button
       variant="raised"
-      class={`content-button raised active ${className ?? ''}`}
+      class={`content-button raised active ${animate ? 'animate' : ''} ${hasBadge ? 'notify' : ''} ${className ?? ''}`}
       style={variantStyles}
       onclick={onClick}
       disabled={disabled}
@@ -11,6 +11,10 @@
         <svelte:component this={dIcon} size={20} />
       </span>
       <span>{dLabel}</span>
+      
+      {#if hasBadge}
+        <span class="notification-badge"></span>
+      {/if}
     </Button>
   {:else}
     <button
@@ -19,8 +23,10 @@
       class:active={active}
       class:collapsed={collapsed}
       class:disabled={disabled}
+      class:nofity={hasBadge}
+      class:animate={animate}
       disabled={disabled}
-      style={active ? variantStyles : ''}
+      style={variantStyles}
       on:click={onClick}
       title={collapsed ? (dLabel) : ''}
     >
@@ -28,6 +34,10 @@
 
       {#if !collapsed}
         <span>{dLabel}</span>
+      {/if}
+
+      {#if hasBadge}
+        <span class="notification-badge"></span>
       {/if}
     </button>
   {/if}
@@ -54,7 +64,10 @@
     icon,
     onClick,
     className,
+    hasBadge = false
   } = $props()
+
+  let animate = $state(false)
 
   const variants = {
     'topics':     { label: 'Topics',     background: '#ec5f54', hover: '#ef7e76', color: 'white', icon: Folder },
@@ -66,9 +79,21 @@
   }
 
   const variantSettings = $derived(variants[variant])
-  const variantStyles = `--bg: ${variantSettings.background}; --hover-bg: ${variantSettings.hover}; color: ${variantSettings.color}; --color: ${variantSettings.color}`
+  const variantStyles = $derived(`--bg: ${variantSettings.background}; --hover-bg: ${variantSettings.hover}; --color: ${variantSettings.color}; ` + (active ? `color: ${variantSettings.color};` : ''))
   const dLabel = $derived(label || variantSettings.label)
   const dIcon = $derived(icon || variantSettings.icon)
+
+  $effect(() => {
+    if (hasBadge) {
+      animate = true
+
+      const timeout = setTimeout(() => {
+        animate = false
+      }, 1500)
+
+      return () => clearTimeout(timeout)
+    }
+  })
 </script>
 
 <style>
@@ -141,5 +166,46 @@
   .content-button.collapsed {
     justify-content: center;
     padding: 12px 0;
+  }
+
+  .button-wrapper {
+    position: relative;
+  }
+
+  .notification-badge {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ff3b30;
+
+    box-shadow: 0 0 0 2px white;
+  }
+
+  .content-button {
+    transition: background 0.3s ease, transform 0.2s ease;
+    transform-origin: center;
+  }
+
+  .animate {
+    animation: wiggle 0.5s ease-in-out, bgFlash 1s ease-in-out;
+  }
+
+  @keyframes wiggle {
+    0%   { transform: rotate( 0deg); }
+    20%  { transform: rotate(-6deg); }
+    40%  { transform: rotate( 6deg); }
+    60%  { transform: rotate(-4deg); }
+    80%  { transform: rotate( 4deg); }
+    100% { transform: rotate( 0deg); }
+  }
+
+  @keyframes bgFlash {
+    0% { background: initial; }
+    50% { background: var(--bg); }
+    100% { background: initial; }
   }
 </style>

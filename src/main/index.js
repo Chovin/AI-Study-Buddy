@@ -312,6 +312,49 @@ ipcMain.handle('chat', async (_, { model, topicId, fileIds, prompt }) => {
   }
 });
 
+ipcMain.handle('motivate', async (_, { model, topicId, fileIds, sessions, secondsEachSession, isPomodoro}) => {
+  const response = await motivate(model, topicId, fileIds, sessions, secondsEachSession, isPomodoro)
+  await db.saveGeneratedContent(topicId, 'motivation', response, fileIds || []);
+})
+
+async function motivate(model, topicId, fileIds, sessions, secondsEachSession, isPomodoro) {
+  let files = await db.getFilesByTopic(topicId);
+  files = files.filter(f => fileIds.includes(f.id))
+  const topic = await db.getTopic(topicId)
+  const sessionType = isPomodoro ? 'Pomodoro' : 'Timed'
+  const minutesSpent = Math.round(secondsEachSession / 60)
+  const response = await llmApi.chatWithFileContext({
+    model,
+    topicId,
+    saveToHistory: false,
+    files,
+    systemMessage: `
+You are a concise, encouraging study companion.
+
+The user has just completed a ${sessionType} session.
+
+Write a short motivational message (1–2 sentences max) that:
+- acknowledges their effort
+- reinforces progress (even small progress)
+- encourages either a short break or continuing
+
+Keep the tone supportive, calm, and genuine.
+Avoid clichés, emojis, and exaggerated hype.
+Provide study tips if relevant.
+
+Use any provided context naturally if relevant, but don't call it "context".
+`,
+    promptMessage: `${sessionType} session completed.
+
+Context: 
+- topic: ${topic.name}
+- duration_minutes: ${minutesSpent}
+- sessions_today: ${sessions}
+`
+  })
+  return response
+}
+
 async function generateQuiz(model, topicId, fileIds, numberOfQuestions, difficulty) {
   try {
     const files = (await db.getFilesByTopic(topicId)).filter(f => fileIds.includes(f.id))

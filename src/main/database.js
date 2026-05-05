@@ -302,6 +302,11 @@ class Database {
     return await this.allAsync(query);
   }
 
+  async getTopic(topicId) {
+    const query = `SELECT * FROM topics WHERE id = ?`
+    return (await this.allAsync(query, [topicId]))[0]
+  }
+
   async getFilesByTopic(topicId) {
     const query = `SELECT * FROM files WHERE topic_id = ?`;
     return (await this.allAsync(query, [topicId])).map(row => new File(this, row));

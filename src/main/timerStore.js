@@ -11,6 +11,7 @@ function createTimerStore() {
     isBreak: false,
 
     timerValue: TIMER_DEFAULT,
+    timerTimeLeft: TIMER_DEFAULT,
     pomodoroTimeLeft: POMODORO_WORK,
     pomodoroWork: POMODORO_WORK,
     pomodoroBreak: POMODORO_BREAK,

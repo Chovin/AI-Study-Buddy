@@ -56,6 +56,9 @@ const api = {
   chat: async (model, topicId, fileIds, prompt) => {
     return await electronAPI.ipcRenderer.invoke('chat', { model, topicId, fileIds, prompt })
   },
+  motivate: async (model, topicId, fileIds, sessions, secondsEachSession, isPomodoro) => {
+    return await electronAPI.ipcRenderer.invoke('motivate', { model, topicId, fileIds, sessions, secondsEachSession, isPomodoro })
+  },
   generateQuiz: async (model, topicId, fileIds, numberOfQuestions, difficulty) => {
     return await electronAPI.ipcRenderer.invoke('generate-quiz', { model, topicId, fileIds, numberOfQuestions, difficulty })
   },

@@ -12,6 +12,7 @@
   import Flashcard from './components/Flashcard.svelte'
   import AppButton from './components/AppButton.svelte';
 
+  import { timerStore } from '../../main/timerStore'
 
   import List, { Item } from '@smui/list'
   import IconButton from '@smui/icon-button'
@@ -58,6 +59,9 @@
   let detailedSummary = $state('')
   let generatingQuickSummary = $state(false)
   let generatingDetailedSummary = $state(false)
+
+  let generatingMotivationalMessage = $state(false)
+  let hasNewMessages = $state(false)
 
   let chatHistory = $state([])
   let chatLoading = $state(false)
@@ -214,6 +218,18 @@
         })
       })
     })
+  })
+
+  // mark msgs as read
+  $effect(() => {
+    if (active == 'chat') {
+      hasNewMessages = false
+    }
+  })
+
+  $effect(() => {
+    void selectedTopic
+    hasNewMessages = false
   })
 
   $effect(async () => {
@@ -548,6 +564,71 @@
       }, 5000)
     }
   }
+
+  const generateMotivatingMessage = async (sessions, secondsEachSession, isPomodoro) => {
+    if (!webuiReady || generatingMotivationalMessage) return
+    if (!selectedTopic) throw new Error('No topic selected')
+
+    generatingMotivationalMessage = true
+
+    try {
+      const msg = await window.api.motivate(
+        selectedModel,
+        selectedTopic.id,
+        files.map(f => f.id),
+        sessions,
+        secondsEachSession,
+        isPomodoro
+      )
+
+      await fetchChatHistory(selectedTopic.id)
+      if (active != 'chat') hasNewMessages = true
+    } catch (error) {
+      responseString = error.message
+
+      setTimeout(() => {
+        responseString = ''
+      }, 10_000)
+
+      throw error
+    } finally {
+      generatingMotivationalMessage = false
+    }
+  }
+
+  let prevTime = null;
+  let prevTimeMode = null;
+
+  // watch for when timer runs out
+  timerStore.subscribe((state) => {
+    const time = timerStore.getDisplaySeconds(state)
+    // first time
+    if (prevTime === null) {
+      prevTime = time; 
+      prevTimeMode = state.mode; 
+      return
+    }
+
+    if (prevTimeMode != state.mode) {
+      prevTimeMode = state.mode
+      prevTime = time
+      return
+    }
+
+    if (state.isRunning) {
+      if (prevTime != time && time == 0) {
+        if (state.mode == 'timer') {
+          generateMotivatingMessage(1, state.timerValue, false)
+        } else if (state.mode == 'pomodoro' && !state.isBreak) {
+          generateMotivatingMessage(state.completedPomodoros, state.pomodoroWork, true)
+        }
+      }
+    }
+
+    prevTime = time
+    prevTimeMode = state.mode
+  })
+
 </script>
 
 <div class="app-shell">
@@ -555,6 +636,7 @@
     bind:collapsed
     bind:active
     {disabledTabs}
+    {hasNewMessages}
   />
 
   <div class="main" class:collapsed={collapsed}>

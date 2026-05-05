@@ -9,6 +9,7 @@
     collapsed = $bindable(false),
     active = $bindable('topics'),
     disabledTabs = [],
+    hasNewMessages = false
   } = $props()
 
   const items = [
@@ -59,6 +60,7 @@
         collapsed={collapsed}
         active={active == item}
         disabled={isDisabled(item)}
+        hasBadge={hasNewMessages && item === 'chat' && active !== 'chat'}
       ></AppButton>
     {/each}
   </nav>

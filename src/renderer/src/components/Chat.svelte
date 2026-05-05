@@ -3,6 +3,7 @@
   import { tick } from 'svelte'
   import { renderMarkdown } from '../utils/markdown.js'
   import AppButton from './AppButton.svelte';
+  import { AlarmClockCheck } from 'lucide-svelte'
 
   let {
     selectedTopic = null,
@@ -24,6 +25,8 @@
     ignoreScroll = $bindable(false),
     chatIsSelected = false
   } = $props()
+
+  let cornerIconSize = 25
 
   let chatContainer
   let textareaRef
@@ -215,12 +218,24 @@
     {/if}
 
     {#each messageList as message, index (message.id || index)}
-      {#if ['user', 'assistant'].includes(message.role)}
+      {#if ['user', 'assistant', 'motivation'].includes(message.role)}
         <div 
-            class={{message: true, [`${message.role}-message`]: true, ["new-message"]: newMessages.includes(message.id)}} 
-            style:animation-delay={`${newMessages.includes(message.id) ? newMessages.indexOf(message.id) * 100 : 0}ms`}>
+          class={{
+            message: true, 
+            [`${message.role == 'motivation' ? 'assistant' : message.role}-message`]: true, 
+            ["new-message"]: newMessages.includes(message.id),
+            motivation: message.role == 'motivation'
+          }} 
+          style:animation-delay={`${newMessages.includes(message.id) ? newMessages.indexOf(message.id) * 100 : 0}ms`}
+          style:--corner-icon-size={`${cornerIconSize}px`}
+        >
           <div class="message-content markdown-content">
             {@html renderMarkdown(message.content)}
+            {#if message.role == 'motivation'}
+              <span class="corner-icon">
+                <svelte:component this={AlarmClockCheck} size={cornerIconSize} />
+              </span>
+            {/if}
           </div>
         </div>
       {:else}
@@ -410,6 +425,36 @@
     border-radius: 12px 12px 12px 0;
     border: 1px solid #e0e0e0;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  .message.assistant-message.motivation .message-content {
+    background: hsl(from #d198f7 h s calc(l + 15));
+  }
+
+  .message.assistant-message.motivation .message-content{
+    position: relative;
+  }
+
+  .message.assistant-message.motivation .message-content .corner-icon {
+    position: absolute;
+    top: calc(-0.4 * var(--corner-icon-size));
+    right: calc(-0.4 * var(--corner-icon-size));
+    width: var(--corner-icon-size);
+    height: var(--corner-icon-size);
+    transform: rotate(10deg);
+    background: white;
+    border-radius: 50%;
+    padding: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    animation: rock 2s ease-in-out infinite;
+  }
+
+  @keyframes rock {
+    0%   { transform: rotate(10deg) }
+    25%  { transform: rotate(20deg) }
+    50%  { transform: rotate( 0deg) }
+    75%  { transform: rotate(10deg) }
+    100% { transform: rotate(10deg) }
   }
 
   .content-message {
