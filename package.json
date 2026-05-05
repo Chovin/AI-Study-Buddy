@@ -27,6 +27,7 @@
     "directories": {
       "output": "release"
     },
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "mac": {
       "target": [
         "dmg",
