@@ -1,6 +1,6 @@
 {
   "name": "ai-study-buddy",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "An Electron application with Svelte",
   "main": "out/main/index.js",
   "author": "example.com",
@@ -28,14 +28,21 @@
       "output": "release"
     },
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "identity": null
     },
     "win": {
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "linux": {
-      "target": ["AppImage"]
+      "target": [
+        "AppImage"
+      ]
     },
     "snap": {
       "publish": null
