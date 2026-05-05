@@ -662,9 +662,9 @@
 
     <div class="body-layout" class:grid-bg={active !== 'timer'}>
       <main class="page-content">
-        {#if active !== 'timer'}
-          <FloatingTimer />
-        {/if}
+        <div style:display={active !== 'timer' ? 'block' : 'none'}>
+          <FloatingTimer/>
+        </div>
 
         {#if active === 'topics'}
           <section class="topics-page">
