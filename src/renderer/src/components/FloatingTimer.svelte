@@ -20,6 +20,9 @@
     try {
       const settings = await window.api.loadTimerSettings()
 
+      timerStore.setTimerValue(settings.timer_value)
+      timerStore.setPomodoroSettings(settings.pomodoro_work, settings.pomodoro_break)
+
       posY = settings.pos_y ?? 90
     } catch {
       posY = 90

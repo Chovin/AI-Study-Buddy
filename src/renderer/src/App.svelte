@@ -83,6 +83,12 @@
     ['timer', 0]
   ]))
 
+  let appLoaded = $state(false)
+
+  onMount(() => {
+    appLoaded = true
+  })
+
   let selectedTopic = $derived.by(() => {
     return topics.find(t => String(t.id) === String(selectedTopicId)) ?? null
   })
@@ -915,14 +921,16 @@
         {/if}
 
         <!-- render it but hide it so that the sfx and restart logic stays working -->
-        <section class="panel timer-page" style:display={active == 'timer' ? 'block' : 'none'}>
-          <div class="section-header">
-            <h2>Timer</h2>
-            <p>Use your study timer here.</p>
-          </div>
+        {#if appLoaded}
+          <section class="panel timer-page" style:display={active == 'timer' ? 'block' : 'none'}>
+            <div class="section-header">
+              <h2>Timer</h2>
+              <p>Use your study timer here.</p>
+            </div>
 
-          <TimerPanel />
-        </section>
+            <TimerPanel />
+          </section>
+        {/if}
       </main>
     </div>
   </div>
