@@ -28,7 +28,7 @@
   #### 1.1 Navigation Bar
   - Select an AI model using the "Select Model" dropdown
   - Select a Topic using the "Select Topic" dropdown  
-  ![alt text](image.png)
+  ![alt text](./docs/assets/image.png)
   #### 1.3 Side Bar
   - The side bar can be collapsed or expanded using the button at the top
   - Tabs available:  
@@ -38,71 +38,71 @@
     - Summary  
     - Chat  
     - Timer    
-![alt text](image-1.png)
+![alt text](./docs/assets/image-1.png)
 
 ### 2. Topics Tab  
-<img src="image-3.png" alt="Alt Text" style="width:50%; height:auto;">  
+<img src="./docs/assets/image-3.png" alt="Alt Text" style="width:50%; height:auto;">  
   
   #### 2.1 Creating a Topic
   - Go to the Topics tab
   - Type a name in "Add New Topic"
   - Click the + button  
-  ![alt text](image-4.png)
+  ![alt text](./docs/assets/image-4.png)
 
   #### 2.2 Renaming / Deleting
   - Click the pencil icon to rename
   - Click the trash icon to delete   
-![alt text](image-6.png)
+![alt text](./docs/assets/image-6.png)
 
   #### 2.3 Selecting a Topic
   - Click on a topic in the list or Use the "Select Topic" drop down at the top   
-  <img src="image-7.png" alt="Alt Text" style="width:50%; height:auto;">  
+  <img src="./docs/assets/image-7.png" alt="Alt Text" style="width:50%; height:auto;">  
 
   #### 2.3 Uploading Files
   - Select a topic
   - Drag a file into the upload section or Browse for a file
   - Files will appear in the list  
-  <img src="image-8.png" alt="Alt Text" style="width:50%; height:auto;">  
+  <img src="./docs/assets/image-8.png" alt="Alt Text" style="width:50%; height:auto;">  
 
 ### 3. Quiz Tab
-![alt text](image-9.png)
+![alt text](./docs/assets/image-9.png)
   #### 3.1 Generating Quiz
   - Select a difficulty (Easy, Medium, Hard)
   - Click "Generate Quiz"
   - Quiz will be created based on the selected topic and its files  
-  ![alt text](image-10.png)
+  ![alt text](./docs/assets/image-10.png)
   #### 3.2 Answering Questions
   - Each question contains multiple choice options
   - Click an answer to select it
   - After selecting:
       - The correct answer will be highlighted green
       - Incorrect selections will be highlighted red  
-  <img src="image-11.png" alt="Alt Text" style="width:50%; height:auto;"/>
+  <img src="./docs/assets/image-11.png" alt="Alt Text" style="width:50%; height:auto;"/>
 
 #### 3.3 Exporting
   - Click “Copy to Clipboard” to copy all Quiz Questions
   - You can paste them into tools like Quizlet  
-  ![alt text](image-12.png)
+  ![alt text](./docs/assets/image-12.png)
 
 ### 4. Flashcards Tab
   #### 4.1 Generating Flashcards 
   - Select a difficulty (Easy, Medium, Hard)
   - Click "Generate Flashcards"
   - Flashcards will be created based on the selected topic and its files  
-  ![alt text](image-14.png)
+  ![alt text](./docs/assets/image-14.png)
   #### 4.2 Using Flashcards
   - Each flashcard has a front (question) and back (answer)
   - Click on the Card or the Flip button to flip it
   - Move through flashcards using the button controls (next/previous)  
-  <img src="image-15.png" alt="Alt Text" style="width:40%; height:auto;"/>
+  <img src="./docs/assets/image-15.png" alt="Alt Text" style="width:40%; height:auto;"/>
 
 #### 4.3 Exporting
   - Click “Copy to Clipboard” to copy all flashcards
   - You can paste them into tools like Quizlet  
-  ![alt text](image-12.png)
+  ![alt text](./docs/assets/image-12.png)
 
 ### 5. Summary Tab
-![alt text](image-13.png)
+![alt text](./docs/assets/image-13.png)
   #### 5.1 Generating Content
   - Click Quick or Detailed Summary
   - Summary will be created based on the selected topic and its files
@@ -111,12 +111,12 @@
   #### 6.1 Asking Questions
   - Type a question and press Enter
   - The AI responds based on the selected topic and files  
-  <img src="image-16.png" alt="Alt Text" style="width:50%; height:auto;">
+  <img src="./docs/assets/image-16.png" alt="Alt Text" style="width:50%; height:auto;">
 
   #### 6.2 Chat Features
   - Messages are saved in chat history
   - View previously generated Quizzes, Flashcards, and Summaries  
-  ![alt text](image-17.png)
+  ![alt text](./docs/assets/image-17.png)
 
 ### 7. Timer Tab/Floating Timer
   #### 7.1 Timer Tab
@@ -125,14 +125,14 @@
   #####   7.1.1 Timer
   - Set a countdown time
   - An alarm will play when time reaches 0  
-  <img src="image-19.png" alt="Alt Text" style="width:50%; height:auto;"> 
+  <img src="./docs/assets/image-19.png" alt="Alt Text" style="width:50%; height:auto;"> 
   
   #####   7.1.2 Pomodoro
   - Uses a study and break cycle
   - Click the right arrow to set a Session and Break length
   - Automatically switches between work time and break time
   - An alarm will play when time reaches 0  
-  <img src="image-20.png" alt="Alt Text" style="width:50%; height:auto;">
+  <img src="./docs/assets/image-20.png" alt="Alt Text" style="width:50%; height:auto;">
 
   #####  7.1.3 Stopwatch  
   - Counts time upward
@@ -141,7 +141,7 @@
   - A small timer appears on screen while using other tabs
   - Hover over the timer to view start/pause or reset buttons
   - Drag timer up or down to change position  
-  ![alt text](image-18.png)
+  ![alt text](./docs/assets/image-18.png)
 
 
 ## Recommended IDE Setup
