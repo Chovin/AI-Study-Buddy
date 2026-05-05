@@ -55,12 +55,15 @@ jobs:
         
       - name: Generate changelog with contributors
         id: changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git fetch --prune --tags --force
 
           BASE=$(git tag --sort=-v:refname | sed -n '2p')
           LATEST=$(git tag --sort=-v:refname | head -n 1)
 
+          # --- compare link ---
           REPO="https://github.com/${GITHUB_REPOSITORY}"
           COMPARE_URL="$REPO/compare/$BASE...$LATEST"
 
@@ -70,15 +73,58 @@ jobs:
             RANGE="$BASE..$LATEST"
           fi
 
+          # --- sort commits by prefix ---
           FEATURES=$(git log "$RANGE" --pretty=format:"- %s (%h)" | grep -i "feat" || true)
           FIXES=$(git log "$RANGE" --pretty=format:"- %s (%h)" | grep -i "fix" || true)
           CHORES=$(git log "$RANGE" --pretty=format:"- %s (%h)" | grep -i "chore" || true)
           OTHER=$(git log "$RANGE" --pretty=format:"- %s (%h)" | grep -vi "feat\|fix\|chore" || true)
 
-          CONTRIBUTORS=$(git log --format='%aN' "$RANGE" \
+          # --- resolve github usernames if possible ---
+          CONTRIBUTORS=$(git log "$RANGE" --format='%aN|%aE' \
             | grep -vE "dependabot|github-actions" \
-            | sort -u \
-            | paste -sd ", ")
+            | while IFS="|" read -r NAME EMAIL; do
+
+                USER=""
+
+                # 1. Handle noreply GitHub emails
+                if [[ "$EMAIL" =~ @users\.noreply\.github\.com$ ]]; then
+
+                  # Case A: 12345+Chovin@users...
+                  USER=$(echo "$EMAIL" | sed -E 's/.*\+([^@]+)@.*/\1/')
+
+                  # Case B: chovin@users...
+                  if [[ "$USER" == *"@"* || -z "$USER" ]]; then
+                    USER=$(echo "$EMAIL" | sed -E 's/([^@]+)@.*/\1/')
+                  fi
+
+                fi
+
+                # 2. Fallback to API only if needed (optional but safe)
+                if [ -z "$USER" ]; then
+                  USER=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+                    "https://api.github.com/search/users?q=$EMAIL+in:email" \
+                    | grep -m 1 '"login":' \
+                    | sed -E 's/.*"login": "([^"]+)".*/\1/')
+                fi
+
+                # 3. Final fallback
+                if [ -z "$USER" ]; then
+                  USER=$(echo "$NAME" | sed 's/^ *//;s/ *$//' | tr '[:upper:]' '[:lower:]')
+                fi
+
+                # Normalize key for dedupe (CRITICAL)
+                KEY=$(echo "$USER" | tr '[:upper:]' '[:lower:]')
+
+                echo "$KEY|$USER"
+
+              done \
+            | sort -u -t'|' -k1,1 \
+            | cut -d'|' -f2 \
+            | while read USER; do
+                echo "[@$USER](https://github.com/$USER)"
+              done \
+            | awk '{printf "%s, ", $0}' \
+            | sed 's/, $//')
 
           {
             echo "CHANGELOG<<EOF"
