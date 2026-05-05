@@ -623,6 +623,10 @@
     margin: 4px 0;
   }
 
+  /* fix extra bottom padding from paragraphs */
+  .message-content.markdown-content :global(p:last-child) {
+    display: inline-block;
+  }
   /* KaTeX styling */
   .message-content.markdown-content :global(.katex) {
     font-size: 1em;
