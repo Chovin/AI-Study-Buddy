@@ -58,11 +58,16 @@ jobs:
         run: |
           git fetch --prune --tags --force
 
-          BASE=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          BASE=$(git tag --sort=-v:refname | sed -n '2p')
+          LATEST=$(git tag --sort=-v:refname | head -n 1)
+
+          REPO="https://github.com/${GITHUB_REPOSITORY}"
+          COMPARE_URL="$REPO/compare/$BASE...$LATEST"
+
           if [ -z "$BASE" ]; then
             RANGE="HEAD"
           else
-            RANGE="$BASE..HEAD"
+            RANGE="$BASE..$LATEST"
           fi
 
           FEATURES=$(git log "$RANGE" --pretty=format:"- %s (%h)" | grep -i "feat" || true)
@@ -77,6 +82,10 @@ jobs:
 
           {
             echo "CHANGELOG<<EOF"
+
+            echo "## 📦 Release Comparison"
+            echo "[View changes between $BASE and $LATEST]($COMPARE_URL)"
+            echo ""
 
             echo "## 🚀 Features"
             echo "$FEATURES"
