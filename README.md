@@ -458,9 +458,25 @@ erDiagram
         INTEGER topic_id FK "References TOPICS(id)"
         TEXT file_name "File name"
         TEXT file_path "File path"
-        TEXT webui_id "Optional webui id"
-        INTEGER processed "0 = not processed, 1 = processed, -1 = errored"
+        TEXT webui_id "Optional Open WebUI file id"
+        INTEGER processed "0 = waiting, 1 = ready, -1 = errored"
         TEXT processing_error "Optional error message"
+    }
+
+    CHAT_HISTORY {
+        INTEGER id PK "Primary key"
+        INTEGER topic_id FK "References TOPICS(id)"
+        TEXT role "Message role (user/system/assistant)"
+        TEXT content "Chat message content"
+        TEXT files_referenced "Optional referenced file ids"
+        DATETIME timestamp "Auto timestamp"
+    }
+
+    SUMMARIES {
+        INTEGER id PK "Primary key"
+        INTEGER topic_id FK "References TOPICS(id)"
+        TEXT content "Summary content"
+        DATETIME timestamp "Auto timestamp"
     }
 
     USERS {
@@ -470,7 +486,18 @@ erDiagram
         TEXT encrypted_api_key "Encrypted API key"
     }
 
+    TIMER_SETTINGS {
+        INTEGER id PK "Single row id = 1"
+        INTEGER timer_value "Countdown timer value"
+        INTEGER pomodoro_work "Pomodoro work duration"
+        INTEGER pomodoro_break "Pomodoro break duration"
+        INTEGER pos_y "Floating timer Y position"
+        TEXT last_selected_model "Last selected model"
+    }
+
     TOPICS ||--o{ FILES : "has many"
+    TOPICS ||--o{ CHAT_HISTORY : "has many"
+    TOPICS ||--o{ SUMMARIES : "has many"
 ```
 
 ## WishListed Features
