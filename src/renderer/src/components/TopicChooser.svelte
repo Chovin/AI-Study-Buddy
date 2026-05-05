@@ -14,7 +14,9 @@
       const selectedTopic = topics.find((t) => String(t.id) == String(selectedTopicId))
       if (selectedTopicName != selectedTopic.name) {
         selectedTopicName = selectedTopic.name
-        refreshKey += 1
+          setTimeout(() => {
+            refreshKey += 1
+          }, 0)
       }
     }
   })
