@@ -162,7 +162,8 @@ function createTimerStore() {
         return {
           ...state,
           isRunning: false,
-          timerTimeLeft: state.timerValue || TIMER_DEFAULT
+          timerValue: TIMER_DEFAULT,
+          timerTimeLeft: TIMER_DEFAULT
         };
       }
 
@@ -170,7 +171,9 @@ function createTimerStore() {
         ...state,
         isRunning: false,
         isBreak: false,
-        pomodoroTimeLeft: state.pomodoroWork || POMODORO_WORK,
+        pomodoroWork: POMODORO_WORK,
+        pomodoroBreak: POMODORO_BREAK,
+        pomodoroTimeLeft: POMODORO_WORK,
         completedPomodoros: 0
       };
     });
