@@ -55,7 +55,19 @@ export function makeRequest(url, method, token = null, body = null) {
 
 export async function runCommand(cmd, args, options={}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, options);
+    // Ensure UTF-8 encoding for Python processes
+    const env = {
+      ...process.env,
+      PYTHONIOENCODING: 'utf-8',
+      ...options.env
+    };
+
+    const spawnOptions = {
+      ...options,
+      env
+    };
+
+    const child = spawn(cmd, args, spawnOptions);
 
     let output = '';
     let errorOutput = '';
