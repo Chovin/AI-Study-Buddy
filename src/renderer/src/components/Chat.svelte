@@ -577,4 +577,22 @@
   .message-content.markdown-content p {
     margin: 4px 0;
   }
+
+  /* KaTeX styling */
+  .message-content.markdown-content :global(.katex) {
+    font-size: 1em;
+    white-space: nowrap;
+  }
+
+  .message-content.markdown-content :global(.katex-display) {
+    display: block;
+    text-align: center;
+    margin: 8px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .message-content.markdown-content :global(.katex-html) {
+    display: inline-block;
+  }
 </style>
