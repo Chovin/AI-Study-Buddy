@@ -236,7 +236,7 @@ $ npm run build:mac
 $ npm run build:linux
 ```
 
-the executable will appear in the `dist` folder. 
+the executable will appear in the `release` folder. 
 
 ### Publish Releases
 

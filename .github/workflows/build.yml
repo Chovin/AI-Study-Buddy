@@ -35,10 +35,10 @@ jobs:
         with:
           name: ${{ matrix.os }}-build
           path: |
-            dist/**
-            *.AppImage
-            *.exe
-            *.dmg
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.AppImage
   
   release:
     name: Create Github Release

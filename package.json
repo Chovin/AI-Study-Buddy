@@ -23,12 +23,24 @@
   },
   "build": {
     "appId": "com.cs495.aistudybuddy",
+    "productName": "AI Study Buddy",
+    "directories": {
+      "output": "release"
+    },
     "mac": {
+      "target": ["dmg", "zip"],
       "identity": null
+    },
+    "win": {
+      "target": ["nsis"]
+    },
+    "linux": {
+      "target": ["AppImage"]
     },
     "snap": {
       "publish": null
-    }
+    },
+    "publish": null
   },
   "comments": {
     "mac build": "TODO: make a code signature to replace identity: null"
