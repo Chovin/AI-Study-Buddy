@@ -41,6 +41,7 @@
     "eventsource": "^4.1.0",
     "flowbite": "^4.0.1",
     "flowbite-svelte": "^1.33.0",
+    "katex": "^0.16.45",
     "kill-port": "^2.0.1",
     "lucide-svelte": "^1.0.1",
     "material-icons": "^1.13.14",

@@ -27,6 +27,7 @@
 
   import 'svelte-material-ui/themes/svelte.css'
   import 'material-icons/iconfont/material-icons.css'
+  import 'katex/dist/katex.min.css'
 
   let collapsed = $state(false)
   let active = $state('topics')
