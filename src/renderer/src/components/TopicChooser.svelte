@@ -12,8 +12,8 @@
   $effect(() => {
     if (topics.length) {
       const selectedTopic = topics.find((t) => String(t.id) == String(selectedTopicId))
-      if (selectedTopicName != selectedTopic.name) {
-        selectedTopicName = selectedTopic.name
+      if (selectedTopic && selectedTopicName != selectedTopic?.name) {
+        selectedTopicName = selectedTopic?.name
           setTimeout(() => {
             refreshKey += 1
           }, 0)
