@@ -2,12 +2,12 @@
 
 ## Running releases
 
-1. Install [Python 3.11 or 3.12](https://www.python.org/downloads/latest/python3.12/)
-2. Download the relevant release from the [releases page](https://github.com/Chovin/AI-Study-Buddy/releases)
+1. Install [Python 3.11 or 3.12](https://www.python.org/downloads/latest/python3.12/) (**3.11** or **3.12** is required as this app uses Open WebUI and it doesn't work on different versions of Python)
+2. Download the relevant release for your platform from the [releases page](https://github.com/Chovin/AI-Study-Buddy/releases) and follow the install instructions for your platform
 3. Open the app
 4. Allow the app time to download Ollama and Open WebUI
 5. Allow the app time to download its first model
-6. It is recommended to also download and use at least llama3.2:3b as smaller models generate lower quality content, although be aware that larger models require much more memory and may slow down or freeze your computer
+6. It is recommended to also download and use at least llama3.2:3b (or cloud models) as smaller models generate lower quality content, although be aware that larger models require much more memory and may slow down or freeze your computer
 7. Create topics, upload files, and generate study materials
 
 ### FAQ
@@ -27,6 +27,8 @@
 ### 1. Navigation and Side Bar
   #### 1.1 Navigation Bar
   - Select an AI model using the "Select Model" dropdown
+    - Uninstalled models will have a download button next to it. Click it to download the model
+    - Using a cloud model for the first time will prompt you to log into Ollama as cloud model usage will use their token quota
   - Select a Topic using the "Select Topic" dropdown  
   ![alt text](./docs/assets/image.png)
   #### 1.3 Side Bar
@@ -46,7 +48,7 @@
   #### 2.1 Creating a Topic
   - Go to the Topics tab
   - Type a name in "Add New Topic"
-  - Click the + button  
+  - Click the + button or press enter  
   ![alt text](./docs/assets/image-4.png)
 
   #### 2.2 Renaming / Deleting
@@ -60,7 +62,7 @@
 
   #### 2.3 Uploading Files
   - Select a topic
-  - Drag a file into the upload section or Browse for a file
+  - Drag one or more files into the upload section or Browse for a file
   - Files will appear in the list  
   <img src="./docs/assets/image-8.png" alt="Alt Text" style="width:50%; height:auto;">  
 
@@ -70,6 +72,7 @@
   - Select a difficulty (Easy, Medium, Hard)
   - Click "Generate Quiz"
   - Quiz will be created based on the selected topic and its files  
+  - Sometimes using smaller models, the LLM won't be able to generate a correctly formatted quiz. If it isn't able to create one after 5 tries, it will stop trying and you will have to click "Generate Quiz" again (consider using a larger model).  
   ![alt text](./docs/assets/image-10.png)
   #### 3.2 Answering Questions
   - Each question contains multiple choice options
@@ -77,6 +80,7 @@
   - After selecting:
       - The correct answer will be highlighted green
       - Incorrect selections will be highlighted red  
+      - Explanations may be revealed if the LLM generated them  
   <img src="./docs/assets/image-11.png" alt="Alt Text" style="width:50%; height:auto;"/>
 
 #### 3.3 Exporting
@@ -89,6 +93,7 @@
   - Select a difficulty (Easy, Medium, Hard)
   - Click "Generate Flashcards"
   - Flashcards will be created based on the selected topic and its files  
+  - Sometimes using smaller models, the LLM won't be able to generate correctly formatted flashcards. If it isn't able to create them after 5 tries, it will stop trying and you will have to click "Generate Flashcards" again (consider using a larger model).  
   ![alt text](./docs/assets/image-14.png)
   #### 4.2 Using Flashcards
   - Each flashcard has a front (question) and back (answer)
@@ -115,7 +120,7 @@
 
   #### 6.2 Chat Features
   - Messages are saved in chat history
-  - View previously generated Quizzes, Flashcards, and Summaries  
+  - View previously generated Quizzes, Flashcards, and Summaries by clicking the relevant buttons  
   ![alt text](./docs/assets/image-17.png)
 
 ### 7. Timer Tab/Floating Timer
@@ -123,14 +128,14 @@
   -  start, stop, and reset controls
 
   #####   7.1.1 Timer
-  - Set a countdown time
+  - Set a countdown time by clicking the chevrons (arrows) or erasing the time displayed and typing in a new time
   - An alarm will play when time reaches 0  
   <img src="./docs/assets/image-19.png" alt="Alt Text" style="width:50%; height:auto;"> 
   
   #####   7.1.2 Pomodoro
   - Uses a study and break cycle
-  - Click the right arrow to set a Session and Break length
-  - Automatically switches between work time and break time
+  - Click the right arrow to switch modes to set the Session and Break length
+  - Automatically switches between work time and break time as the time runs out
   - An alarm will play when time reaches 0  
   <img src="./docs/assets/image-20.png" alt="Alt Text" style="width:50%; height:auto;">
 
@@ -243,22 +248,25 @@ the executable will appear in the `release` folder.
 ```bash
 $ # this project uses Github Actions to automatically build / publish 
 $ # draft releases. Run one of these commands to push a release
-$ # patch bumps the rightmost version number (ex. bumps the 0 in v2.1.0)
+$ # patch bumps the rightmost version number 
+$ # for bugfixes / hotfixes (ex. bumps the 0 in v2.1.0)
 $ npm run patch
-$ # minor bumps the middle version number (ex. bumps the 1 in v2.1.0)
+$ # minor bumps the middle version number for new 
+$ # backwards compatable features (ex. bumps the 1 in v2.1.0)
 $ npm run minor
-$ # major bumps the leftmost version number (ex. bumps the 2 in v2.1.0)
+$ # major bumps the leftmost version number 
+$ # for breaking changes (ex. bumps the 2 in v2.1.0)
 $ npm run major
 ```
 
 After publishing a draft release, you must publish the release. To do this, go to the [releases page](https://github.com/Chovin/AI-Study-Buddy/releases), locate your release, then click the edit button.
 ![edit button](./docs/assets/Edit%20Draft%20Releases.png)
-Now scroll down throught the assets making sure they have all uploaded successfully (If they haven't uploaded successfully they may be in the process of uploading, so wait awhile), then click `Publish Release`
+Now scroll down through the assets making sure they have all uploaded successfully (If they haven't uploaded successfully they may be in the process of uploading, so wait awhile), then click `Publish Release`
 ![publish release](./docs/assets/Publish%20Release.png)
 
 #### Troubleshooting
 
-If the app doesn't pop up when you open it, you may need to close it and reopen it again. Not sure why
+If the app doesn't pop up when you open it, you may need to close it and reopen it again. Not sure why.
 Potentially, this might just be a Mac thing and is happening because we didn't sign the app yet. If the app still doesn't open, try opening it from the terminal `./release/mac-arm64/Ai\ Study\ Buddy.app/Contents/MacOS/Ai\ Study\ Buddy`. Future attempts to open it by double clicking on the app should open it now.
 
 You might need to remove the `release` and `out` folders first before you rebuild.
