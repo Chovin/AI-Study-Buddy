@@ -1,13 +1,22 @@
 # AI-Study-Buddy
 
-## Running releases
+## Running Releases
+
+We will show in detail how to install on Windows, but the process / things needed are the same on Mac and Linux.
 
 1. Install [Python 3.11 or 3.12](https://www.python.org/downloads/release/python-31210/) (**3.11** or **3.12** is required as this app uses Open WebUI and it doesn't work on different versions of Python)
-2. Download the relevant release for your platform from the [releases page](https://github.com/Chovin/AI-Study-Buddy/releases) and follow the install instructions for your platform
-3. Open the app
-4. Allow the app time to download Ollama and Open WebUI
+   1. Scroll down and select the download link for your platform ![python choose platform](./docs/assets/download%20python.png)
+   2. On Windows you will need to install Python through the Python install manager, so download that ![python install manager](./docs/assets/download%20python%20manager.png)
+   3. Click through the installer ![python installer](./docs/assets/install%20python%20manager.png)
+   4. When a terminal opens, say yes (y) to global shortcuts but **no** (n) to installing the latest version of CPython as we want to install the older versions 3.11 or 3.12 ![python terminal](./docs/assets/no%20python.png)
+   5. Once that finishes, open a cmd prompt or powershell and type `py install 3.12.10` to install python 3.12.10 ![py install](./docs/assets/install%20python%203.12.10.png)
+2. Download the relevant release of the AI Study Buddy app for your platform from the [releases page](https://github.com/Chovin/AI-Study-Buddy/releases) and follow the install instructions for your platform
+   1. If you get `Windows protected your PC`, click `More info` and click `Run anyway`. This message appears because we didn't sign the app. ![more info](./docs/assets/more%20info.png) ![run anyway](./docs/assets/run%20anyway.png)
+   2. Wait for the app to install ![install](./docs/assets/install%20study%20buddy.png)
+3. Open the app if it doesn't open by itself
+4. Allow the app time to download Ollama and Open WebUI (This can take some time) ![download ollama and webui](./docs/assets/download%20ollama.png)
 5. Allow the app time to download its first model
-6. It is recommended to also download and use at least llama3.2:3b (or cloud models) as smaller models generate lower quality content, although be aware that larger models require much more memory and may slow down or freeze your computer
+6. It is recommended to also download and use at least llama3.2:3b (or cloud models) as smaller models generate lower quality content, although be aware that larger models require much more memory and may slow down or freeze your computer ![install models](./docs/assets/download%20models.png)
 7. Create topics, upload files, and generate study materials
 
 ### FAQ
@@ -155,13 +164,19 @@
 
 ## Project Setup
 
-### Install
+### Installing from source
 
-1. Install [Node.js](https://nodejs.org/)
-2. Install [Python 3.11 or 3.12](https://www.python.org/downloads/release/python-31210/)
+We will show in detail how to install on Windows but the process / things needed are the same on Mac and Linux.
+
+1. Install [Node.js](https://nodejs.org/) ![get node](./docs/assets/get%20node.png) 
+   1. Get the installer ![node windows installer](./docs/assets/get%20install%20node.png)
+   2. Click through the installer (it is not necessary to install the tools needed for C/C++ compilation) ![no compilation](./docs/assets/no%20chocolatey.png)
+   3. Install the defaults ![defaults](./docs/assets/next%20node.png)
+2. Install [Python 3.11 or 3.12](https://www.python.org/downloads/release/python-31210/) (follow instructions in [Running Relases](#running-releases))
 3. Clone the repo: `git clone https://github.com/Chovin/AI-Study-Buddy.git`
 4. Change directory into the project directory `cd AI-Study-Buddy`
 5. In the project directory, run `npm install`
+   1. ![clone, cd, npm install](./docs/assets/npm%20install.png)
 
 ### Development
 
