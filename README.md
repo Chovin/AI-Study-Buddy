@@ -158,7 +158,7 @@
 ### Install
 
 1. Install [Node.js](https://nodejs.org/)
-2. Install [Python 3.11 or 3.12](https://www.python.org/downloads/latest/python3.12/)
+2. Install [Python 3.11 or 3.12](https://www.python.org/downloads/release/python-31210/)
 3. Clone the repo: `git clone https://github.com/Chovin/AI-Study-Buddy.git`
 4. Change directory into the project directory `cd AI-Study-Buddy`
 5. In the project directory, run `npm install`
