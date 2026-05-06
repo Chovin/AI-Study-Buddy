@@ -2,7 +2,7 @@
 
 ## Running releases
 
-1. Install [Python 3.11 or 3.12](https://www.python.org/downloads/latest/python3.12/) (**3.11** or **3.12** is required as this app uses Open WebUI and it doesn't work on different versions of Python)
+1. Install [Python 3.11 or 3.12](https://www.python.org/downloads/release/python-31210/) (**3.11** or **3.12** is required as this app uses Open WebUI and it doesn't work on different versions of Python)
 2. Download the relevant release for your platform from the [releases page](https://github.com/Chovin/AI-Study-Buddy/releases) and follow the install instructions for your platform
 3. Open the app
 4. Allow the app time to download Ollama and Open WebUI
