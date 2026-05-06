@@ -128,7 +128,7 @@
   -  start, stop, and reset controls
 
   #####   7.1.1 Timer
-  - Set a countdown time by clicking the chevrons (arrows) or erasing the time displayed and typing in a new time
+  - Set a countdown time by clicking the chevrons (arrows)
   - An alarm will play when time reaches 0  
   <img src="./docs/assets/image-19.png" alt="Alt Text" style="width:50%; height:auto;"> 
   
