@@ -12,7 +12,7 @@
 
 ### FAQ
 
-1. If you are on a Mac and are getting `“ai-study-buddy” is damaged and can’t be opened. You should move it to the Trash.`, this is likely because we published this without an Apple Developer account ($99/year) so Apple doesn't recognize it as a properly signed app. To work around this, open a terminal and run `xattr -cr <path_to_app>/ai-study-buddy.app`, replacing `<path_to_app>` with the path to the app on your computer. for example if you put it into `/Applications/`, then you would run `xattr -cr /Applications/ai-study-buddy.app`
+1. If you are on a Mac and are getting `“AI Study Buddy” is damaged and can’t be opened. You should move it to the Trash.`, this is likely because we published this without an Apple Developer account ($99/year) so Apple doesn't recognize it as a properly signed app. To work around this, open a terminal and run `xattr -cr <path_to_app>/AI\ Study\ Buddy.app`, replacing `<path_to_app>` with the path to the app on your computer. for example if you put it into `/Applications/`, then you would run `xattr -cr /Applications/AI\ Study\ Buddy.app`
 2. If you get "Port 8080 is already in use" when the app is starting Open WebUI, you will need to close the program using that port. On Mac/Linux, you can open a terminal and type `lsof -i :8080`. This will list the processes currently using that port. Take note of the number in the `PID` column. This is the process id. Then kill that process by entering the command `kill <PID>` where `<PID>` is the number in the `PID` column. For instance if the `PID` is `79673`, then you would type `kill 79673`. On Windows you would open a cmd prompt and type `netstat -ano | findstr :8080` and then use `taskkill /PID <PID> /F` to kill the process.
 
 ## User Manual 
@@ -259,9 +259,9 @@ Now scroll down throught the assets making sure they have all uploaded successfu
 #### Troubleshooting
 
 If the app doesn't pop up when you open it, you may need to close it and reopen it again. Not sure why
-Potentially, this might just be a Mac thing and is happening because we didn't sign the app yet. If the app still doesn't open, try opening it from the terminal `./dist/mac-arm64/ai-study-buddy.app/Contents/MacOS/ai-study-buddy`. Future attempts to open it by double clicking on the app should open it now.
+Potentially, this might just be a Mac thing and is happening because we didn't sign the app yet. If the app still doesn't open, try opening it from the terminal `./release/mac-arm64/Ai\ Study\ Buddy.app/Contents/MacOS/Ai\ Study\ Buddy`. Future attempts to open it by double clicking on the app should open it now.
 
-You might need to remove the `dist` and `out` folders first before you rebuild.
+You might need to remove the `release` and `out` folders first before you rebuild.
 
 ## Architecture
 
