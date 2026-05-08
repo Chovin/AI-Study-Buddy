@@ -286,6 +286,8 @@ Potentially, this might just be a Mac thing and is happening because we didn't s
 
 You might need to remove the `release` and `out` folders first before you rebuild.
 
+If you're getting `UnhandledPromiseRejectionWarning: Error: spawn Unknown system error -88` `electron-ollama` might have installed an incomplete or broken version. You will need to go to `~/Library/Application Support/ai-study-buddy/electron-ollama/` on Mac or `C:\Users\<YourUsername>\AppData\Roaming\ai-study-buddy\electron-ollama\` on Windows and delete the most recent ollama version
+
 ## Architecture
 
 ### Backend
