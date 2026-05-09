@@ -281,6 +281,8 @@ Now scroll down through the assets making sure they have all uploaded successful
 
 #### Troubleshooting
 
+There's a log file that you can use to help troubleshoot at `~/Library/Application Support/ai-study-buddy/webui/llm_log.txt` on Mac or `C:\Users\<YourUsername>\AppData\Roaming\ai-study-buddy\webui\llm_log.txt` on Windows.
+
 If the app doesn't pop up when you open it, you may need to close it and reopen it again. Not sure why.
 Potentially, this might just be a Mac thing and is happening because we didn't sign the app yet. If the app still doesn't open, try opening it from the terminal `./release/mac-arm64/Ai\ Study\ Buddy.app/Contents/MacOS/Ai\ Study\ Buddy`. Future attempts to open it by double clicking on the app should open it now.
 
