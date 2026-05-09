@@ -1,15 +1,28 @@
+# name of action. shows up in Actions tab
 name: Build and Release
+# on pushing tags
 on:
   push:
     tags:
       - 'v*' # Trigger on version tags (e.g., v1.0.0)
 
 jobs:
+  # name of job
   build:
+    # what OS to run the job on
+    # notice, we use matrix.os here. see the strategy section for that.
     runs-on: ${{ matrix.os }}
+    # set permissions that the job has over the repo
     permissions:
       contents: write
       pull-requests: write
+    # strategy matrix allows us to set variables and run jobs with those variables
+    # for example, this setup runs 3 jobs, the first being with the variables 
+    # os: ubuntu-latest and script: build:linux. We use include to add extra variables
+    # onto other variables. In this instance, script to os. If we use arrays here instead 
+    # of putting these variables in include, then we'd be running 9 jobs, one with each 
+    # combination of the os and script variables. 
+    # read more here: https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/run-job-variations#adding-a-matrix-strategy-to-your-workflow-job
     strategy:
       matrix:
         # Build on Windows, macOS, and Linux
@@ -20,29 +33,39 @@ jobs:
             script: build:win
           - os: macos-latest
             script: build:mac
-
+    # the steps of this job
     steps:
+      # clone the repo
       - uses: actions/checkout@v4
+      # install node
       - uses: actions/setup-node@v4
+        # using version 22
         with:
           node-version: 22
+      # npm install the deps
       - run: npm install
 
+      # npm run the script defined in the matrix variable script
       - run: npm run ${{ matrix.script }}
-
+      
+      # upload the artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
+          # name it as the <platform>-build
           name: ${{ matrix.os }}-build
+          # only upload the following file extensions
           path: |
             release/*.dmg
             release/*.zip
             release/*.exe
             release/*.AppImage
   
+  # name of the job
   release:
     name: Create Github Release
     runs-on: ubuntu-latest
+    # specifies that the job requires the job named build before running 
     needs: build
     permissions:
       contents: write
@@ -50,23 +73,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        # fetch entire commit history
         with:
           fetch-depth: 0
         
       - name: Generate changelog with contributors
+        # id for reference in other steps
         id: changelog
+        # set GH_TOKEN environment variable. secrets.GITHUB_TOKEN is an automatically
+        # created token created for each job with access to the repo
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # reset cache and grab fresh branches/tags from remote
           git fetch --prune --tags --force
 
+          # previous tag. gets the tags in the repo sorted by
+          # tagname as numbers and sed -n '2p' gets the second line
           BASE=$(git tag --sort=-v:refname | sed -n '2p')
+          # current tag. head -n 1 gets the first line
           LATEST=$(git tag --sort=-v:refname | head -n 1)
 
           # --- compare link ---
           REPO="https://github.com/${GITHUB_REPOSITORY}"
           COMPARE_URL="$REPO/compare/$BASE...$LATEST"
 
+          # if BASE is empty, just use HEAD (currently checkedout commit)
           if [ -z "$BASE" ]; then
             RANGE="HEAD"
           else
@@ -74,12 +106,17 @@ jobs:
           fi
 
           # --- sort commits by prefix ---
+          # look for feat/fix/chore in the commit messages and store those in variables
+          # format them in the format "- <commit message> (<short commit hash>)"
           FEATURES=$(git log "$RANGE" --pretty=format:"- %s (%h)" | grep -i "feat" || true)
           FIXES=$(git log "$RANGE" --pretty=format:"- %s (%h)" | grep -i "fix" || true)
           CHORES=$(git log "$RANGE" --pretty=format:"- %s (%h)" | grep -i "chore" || true)
           OTHER=$(git log "$RANGE" --pretty=format:"- %s (%h)" | grep -vi "feat\|fix\|chore" || true)
 
           # --- resolve github usernames if possible ---
+          # get git log in the format <username>|<email>
+          # ignore accounts with name dependabot and github-actions
+          # these are bots. Split the line into NAME and EMAIL vars
           CONTRIBUTORS=$(git log "$RANGE" --format='%aN|%aE' \
             | grep -vE "dependabot|github-actions" \
             | while IFS="|" read -r NAME EMAIL; do
@@ -87,12 +124,15 @@ jobs:
                 USER=""
 
                 # 1. Handle noreply GitHub emails
+                # if the email ends in @users.noreply.github.com
                 if [[ "$EMAIL" =~ @users\.noreply\.github\.com$ ]]; then
 
                   # Case A: 12345+Chovin@users...
+                  # if the email has a + sign, take the text after it
                   USER=$(echo "$EMAIL" | sed -E 's/.*\+([^@]+)@.*/\1/')
 
                   # Case B: chovin@users...
+                  # otherwise just get the part before the @ in email
                   if [[ "$USER" == *"@"* || -z "$USER" ]]; then
                     USER=$(echo "$EMAIL" | sed -E 's/([^@]+)@.*/\1/')
                   fi
@@ -100,6 +140,7 @@ jobs:
                 fi
 
                 # 2. Fallback to API only if needed (optional but safe)
+                # if USER is still empty, then curl github's user search API
                 if [ -z "$USER" ]; then
                   USER=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
                     "https://api.github.com/search/users?q=$EMAIL+in:email" \
@@ -108,14 +149,20 @@ jobs:
                 fi
 
                 # 3. Final fallback
+                # if still empty, then just use the git (not github) username
                 if [ -z "$USER" ]; then
                   USER=$(echo "$NAME" | sed 's/^ *//;s/ *$//' | tr '[:upper:]' '[:lower:]')
                 fi
 
                 # Normalize key for dedupe (CRITICAL)
+                # lowercase it
                 KEY=$(echo "$USER" | tr '[:upper:]' '[:lower:]')
 
                 echo "$KEY|$USER"
+
+              # sort by KEY and remove duplicates (like chovin (lower) is a dupe of Chovin (title))
+              # output each user in markdown url format [@<user>](https://github.com/<user>)
+              # comma separate them
 
               done \
             | sort -u -t'|' -k1,1 \
@@ -127,6 +174,8 @@ jobs:
             | sed 's/, $//')
 
           {
+            # output everthing into the GITHUB_OUTPUT variable which carries over to next job
+            # GITHUB_OUTPUT expects key value pairs, so we're setting the key to be CHANGELOG
             echo "CHANGELOG<<EOF"
 
             echo "## 📦 Release Comparison"
@@ -154,22 +203,29 @@ jobs:
 
             echo "EOF"
           } >> $GITHUB_OUTPUT
-
+      # download the artifacts into the artifacts folder
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
+      # list what was downloaded just for troubleshooting
       - name: Display structure
         run: ls -R artifacts
       
+      # make a draft release with specified name
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
+          # github.ref_name is the tag
           name: "AI Study Buddy ${{ github.ref_name }}"
+          # body is the body of the release message
+          # steps.changelog is the job with the id "changelog"
+          # outputs.CHANGELOG is the key we set in the prev step
           body: |
             ${{ steps.changelog.outputs.CHANGELOG }}
+          # upload the files in the artifacts folder
           files: |
             artifacts/**/*
         env:
