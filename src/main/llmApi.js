@@ -16,11 +16,17 @@ const isDev = !app.isPackaged
 
 const WEBUI_BASE_URL = 'http://localhost:8080/api/v1';
 
-const WEBUI_DIR = path.join(app.getPath('userData'), 'webui')
+const USER_DATA_DIR = app.getPath('userData')
+const WEBUI_DIR = path.join(USER_DATA_DIR, 'webui')
 const VENV_PATH = path.join(WEBUI_DIR, 'venv')
 const PIP_REQUIREMENTS_PATH = path.join(WEBUI_DIR, 'REQUIREMENTS.txt')
+
+const HOME_DIR = app.getPath('home')
 const LOG_PATH = path.join(WEBUI_DIR, 'llm_log.txt')
 
+if (process.platform == 'darwin') {
+  process.env.PATH += ':/usr/local/bin:/opt/homebrew/bin'
+}
 
 if (!fs.existsSync(WEBUI_DIR)) {
   fs.mkdirSync(WEBUI_DIR, { recursive: true })
@@ -69,6 +75,7 @@ const WUIPID = 'Setting up Open WebUI Server'
 
 class LLMInterface {
   constructor(basePath) {
+    this.basePath = basePath
     this.electronOllama = new ElectronOllama({basePath})
     this.ollamaClient = new Ollama({baseURL: 'http://localhost:11434'})
     this._models = models
@@ -269,7 +276,8 @@ class LLMInterface {
     
     const env = {
       ...process.env,
-      DATA_DIR: app.getPath('userData'),
+      HOME: HOME_DIR,
+      DATA_DIR: USER_DATA_DIR,
       OLLAMA_BASE_URL: 'http://127.0.0.1:11434',
       WEBUI_AUTH: 'True',
       DEFAULT_USER_ROLE: 'admin',
@@ -336,6 +344,7 @@ class LLMInterface {
 
     const webuiProcess = await runCommand(scriptPath, ['serve'], {
       env,
+      cwd: WEBUI_DIR,
       // for some reason, open webui shows the download percentage in stderr
       // and errors in stdout
       stdoutCallback: stdioCallbackMaker(),
@@ -1115,4 +1124,4 @@ Summary:`
   }
 }
 
-export default new LLMInterface(app.getPath('userData'))
+export default new LLMInterface(USER_DATA_DIR)
