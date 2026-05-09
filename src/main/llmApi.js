@@ -65,6 +65,33 @@ Object.entries(_LOG_MAP).forEach(([k, v]) => {
   }
 })
 
+const oldKeyPaths = 
+process.platform == 'win32' ? [
+  path.dirname(process.execPath),
+  path.parse(process.execPath).root,
+  HOME_DIR
+] : [
+  path.parse(process.execPath).root,
+  HOME_DIR
+]
+
+oldKeyPaths
+  .map(d => path.join(d, '.webui_secret_key'))
+  .filter(d => {
+    try {
+      return fs.existsSync(d)
+    } catch {
+      return false
+    }
+  }).forEach(d => {
+    const target = path.join(WEBUI_DIR, '.webui_secret_key')
+    try {
+      fs.copyFileSync(d, target)
+      console.log(`moved ${d} to ${target}`)
+    } catch {
+      return
+    }
+  })
 
 const VENV_PYTHON = process.platform === 'win32'
   ? path.join(VENV_PATH, 'Scripts', 'python.exe')
@@ -124,14 +151,18 @@ class LLMInterface {
     let python_cmd;
 
     for (let cmd of PYTHON_CMDS) {
-      await runCommand(cmd, ['--version'], {
-        stdoutCallback: (data) => {
-          console.log('in python cmd', cmd, data, data.match(/Python 3.1[12]/))
-          if (data.match(/Python 3.1[12]/)) {
-            python_cmd = cmd
+      try {
+        await runCommand(cmd, ['--version'], {
+          stdoutCallback: (data) => {
+            console.log('in python cmd', cmd, data, data.match(/Python 3.1[12]/))
+            if (data.match(/Python 3.1[12]/)) {
+              python_cmd = cmd
+            }
           }
-        }
-      })
+        })
+      } catch {
+        continue
+      }
       if (python_cmd) {
         break
       }
@@ -283,7 +314,8 @@ class LLMInterface {
       DEFAULT_USER_ROLE: 'admin',
       // these are needed to allow API key creation without GUI interaction
       ENABLE_API_KEYS: 'True',
-      USER_PERMISSIONS_FEATURES_API_KEYS: 'True'
+      USER_PERMISSIONS_FEATURES_API_KEYS: 'True',
+      WEBUI_SECRET_KEY_FILE: path.join(WEBUI_DIR, '.webui_secret_key')
     }
 
     const scriptPath = process.platform === 'win32'
