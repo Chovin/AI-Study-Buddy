@@ -19,10 +19,46 @@ const WEBUI_BASE_URL = 'http://localhost:8080/api/v1';
 const WEBUI_DIR = path.join(app.getPath('userData'), 'webui')
 const VENV_PATH = path.join(WEBUI_DIR, 'venv')
 const PIP_REQUIREMENTS_PATH = path.join(WEBUI_DIR, 'REQUIREMENTS.txt')
+const LOG_PATH = path.join(WEBUI_DIR, 'llm_log.txt')
+
 
 if (!fs.existsSync(WEBUI_DIR)) {
   fs.mkdirSync(WEBUI_DIR, { recursive: true })
 }
+
+// monkeypatch console.log :P
+const logStream = fs.createWriteStream(LOG_PATH, {flags: 'a'})
+
+const logToFile = (level, args) => {
+  const timestamp = new Date().toISOString()
+
+  const msg = args.map(arg => {
+    if (typeof arg === 'string') return arg
+
+    try {
+      return JSON.stringify(arg, null, 2)
+    } catch {
+      return String(arg)
+    }
+  }).join(' ')
+
+  logStream.write(`[${timestamp}] [${level}] ${msg}\n`)
+}
+
+const _LOG_MAP = {
+  'log': console.log,
+  'warn': console.warn,
+  'error': console.error,
+  'info': console.info
+}
+
+Object.entries(_LOG_MAP).forEach(([k, v]) => {
+  console[k] = (...args) => {
+    v(...args)
+    logToFile(k.toUpperCase(), args)
+  }
+})
+
 
 const VENV_PYTHON = process.platform === 'win32'
   ? path.join(VENV_PATH, 'Scripts', 'python.exe')
@@ -375,21 +411,29 @@ class LLMInterface {
         progressManager.failTask(OLSPID, error)
         return null
       }
-      await eo.serve(metadata.version, {
-        serverLog: (message) => console.log('[Ollama]', message),
-        downloadLog: (percent, message) => {
-          console.log('[Ollama Download]', `${percent}%`, message)
-          progressManager.updateTask(OLSPID, {msg: 'Downloading Server...', progress: percent/100})
-        },
-      })
+      try {
+        await eo.serve(metadata.version, {
+          serverLog: (message) => console.log('[Ollama]', message),
+          downloadLog: (percent, message) => {
+            console.log('[Ollama Download]', `${percent}%`, message)
+            progressManager.updateTask(OLSPID, {msg: 'Downloading Server...', progress: percent/100})
+          },
+        })
+      } catch (error) {
+        console.error(error)
+      }
     } else {
       console.log('Ollama server is already running')
     }
 
     // version check
-    const liveVersion = await fetch('http://localhost:11434/api/version').then(res => res.json())
-    console.log('Currently running Ollama', liveVersion);
-
+    try {
+      const liveVersion = await fetch('http://localhost:11434/api/version').then(res => res.json())
+      console.log('Currently running Ollama', liveVersion);
+    } catch (error) {
+      console.error(error)
+      return false
+    }
     // record installed models
     (await this.listModels()).forEach(({name, size}) => {
       if (!this._models[name]) {
